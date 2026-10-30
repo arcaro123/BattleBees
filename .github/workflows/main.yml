@@ -30,8 +30,8 @@ jobs:
           SDL_VIDEODRIVER: dummy
           SDL_AUDIODRIVER: dummy
           BATTLEBEES_DATA: ${{ github.workspace }}/web_assets
-        run: python -c "import main; main.get_sprites(); main.get_audio()"
-
+        run: python -c "import main; main.WEB=True; main.get_sprites(); main.get_audio()"
+        
       - name: Build with Pygbag
         run: python -m pygbag --build "${{ github.workspace }}/main.py"
 
