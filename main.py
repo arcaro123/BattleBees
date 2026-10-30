@@ -31,15 +31,20 @@ import pickle
 import random
 import sys
 import zlib
+import asyncio
 
 import pygame
 from PIL import Image, ImageDraw  # pip install pillow
 
-
+WEB = sys.platform == "emscripten"
 
 def data_dir():
-    """Carpeta d'usuari per al desat i les memòries cau (si no es pot, la de l'script)."""
-    d = os.path.join(os.path.expanduser("~"), ".bee_battle")
+    """Carpeta de dades: al navegador, la que ve empaquetada amb el joc."""
+    d = os.environ.get("BATTLEBEES_DATA")
+    if not d and WEB:
+        d = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web_assets")
+    if not d:
+        d = os.path.join(os.path.expanduser("~"), ".bee_battle")
     try:
         os.makedirs(d, exist_ok=True)
         return d
@@ -3468,7 +3473,9 @@ def build_sprites(progress=None):
 
 # >>> ART_END
 def _src_hash(start_tag, end_tag):
-    """Hash del tros de codi entre dues etiquetes: la memòria cau s'invalida si canvia el dibuix."""
+    """Hash del tros de codi entre dues etiquetes."""
+    if WEB:
+        return "web"
     try:
         with open(os.path.abspath(__file__), "r", encoding="utf-8") as f:
             txt = f.read()
@@ -8676,7 +8683,7 @@ def loading_screen(frac, label):
     pygame.event.pump()
 
 
-def main():
+async def main():
     global IMG
     argv = sys.argv
     if "--simulate" in argv:
@@ -8808,10 +8815,11 @@ def main():
                 music_play(MUSIC_BY_BG.get(g.stage["bg"], "calm") if g.state in ("play", "win", "lose") else "calm")
             g.draw()
             pygame.display.flip()
+            await asyncio.sleep(0)
     finally:
         g.save()
         pygame.quit()
 
 
 if __name__ == "__main__":
-    main()
+     asyncio.run(main())
