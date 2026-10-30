@@ -1,5 +1,5 @@
 """
-BEE BATTLE - Joc estil "Battle Cats" amb abelles (Pygame): 18 nivells fins a la Vespa Reina.
+THE BATTLEBEES - Joc estil "Battle Cats" amb abelles (Pygame): 24 nivells fins a la Vespa Reina.
 
 TOT en un sol fitxer: els sprites (pixel art amb llum i ombres) i el so/música es generen per codi
 la primera vegada i es guarden en memòria cau (carpeta ~/.bee_battle) per arrencar de pressa.
@@ -3759,7 +3759,7 @@ DECK_MAX = 6
 WALLET_MAX = 8
 MAX_CANNON = 8
 CAT_BASE_HP = 3000
-SAVE_VERSION = 10
+SAVE_VERSION = 11
 
 
 # ------------------------------------------------------------ DADES
@@ -4000,7 +4000,36 @@ STAGES = [
          spawns=[("bat", 4, 8, 99), ("widow", 8, 12, 99), ("hornet", 30, 28, 99)],
          events=[dict(t=70, units=[("mantis_king", 1)], msg="ALERTA: Mantis Rei!"),
                  dict(t=140, units=[("mantis_king", 1), ("hornet", 2)], msg="El Rei no ve sol!")]),
-    dict(name="18. EL NIU DE LA VESPA REINA", diff=18, rec=15, par=420, base_hp=19411, mult=1.75, amult=1.43, cap=10,
+    dict(name="18. La Platja a la Nit", diff=18, rec=15, par=440, base_hp=56430, mult=5.80, amult=2.55, cap=13, boss=False,
+         cat_hp=5000, bg="bg_beach", base="base_sandcastle", base_off=10, amb="sparkle", clouds=False, night=True,
+         spawns=[("crab", 4, 8, 99), ("mosquito", 6, 7, 99), ("dragonfly", 14, 10, 99)],
+         events=[dict(t=75, units=[("crab_king", 1)], msg="ALERTA: Cranc Rei!")]),
+    dict(name="19. El Camp en Flames", diff=19, rec=15, par=450, base_hp=71340, mult=7.31, amult=2.86, cap=13, boss=False,
+         cat_hp=5000, bg="bg_farm", base="base_scarecrow", base_off=6, amb="embers", clouds=False,
+         hazard=dict(kind="lava", every=8, count=2, dmg=215),
+         spawns=[("fireant", 3, 4, 99), ("locust", 8, 7, 99), ("cricket", 12, 7, 99)],
+         events=[dict(t=80, units=[("rhino", 1)], msg="ALERTA: Rinoceront!")]),
+    dict(name="20. La Selva Tempestuosa", diff=20, rec=15, par=460, base_hp=54560, mult=6.98, amult=2.87, cap=13, boss=False,
+         cat_hp=5000, bg="bg_jungle", base="base_tiki", base_off=6, amb="fireflies", clouds=False,
+         hazard=dict(kind="lightning", every=8, count=2, dmg=225),
+         spawns=[("frog", 5, 9, 99), ("mantis", 14, 14, 99), ("firefly", 10, 9, 99)],
+         events=[dict(t=80, units=[("toad_king", 1)], msg="ALERTA: Gripau Rei!")]),
+    dict(name="21. El Pantà Embruixat", diff=21, rec=15, par=470, base_hp=49438, mult=6.73, amult=2.90, cap=13, boss=False,
+         cat_hp=5500, bg="bg_swamp", base="base_swamp", base_off=20, amb="fireflies", clouds=False, night=True,
+         spawns=[("widow", 5, 9, 99), ("frog", 8, 10, 99), ("centipede", 25, 20, 99)],
+         events=[dict(t=90, units=[("tarantula", 1)], msg="ALERTA: Taràntula gegant!")]),
+    dict(name="22. Les Mines Profundes", diff=22, rec=15, par=480, base_hp=105000, mult=10.70, amult=3.57, cap=13, boss=False,
+         cat_hp=5500, bg="bg_mine", base="base_mine", base_off=6, amb="dust", clouds=False,
+         hazard=dict(kind="rock", every=9, count=2, dmg=215),
+         spawns=[("bat", 4, 8, 99), ("scorpion", 12, 13, 99), ("termite", 3, 5, 99)],
+         events=[dict(t=80, units=[("scorpion_king", 1)], msg="ALERTA: Escorpí Rei!"),
+                 dict(t=150, units=[("scorpion_king", 1), ("termite", 8)], msg="El Rei i el seu eixam!")]),
+    dict(name="23. El Cim Gelat", diff=23, rec=15, par=490, base_hp=45900, mult=4.59, amult=2.49, cap=13, boss=False,
+         cat_hp=6000, bg="bg_glacier", base="base_icespire", base_off=6, amb="snow", clouds=False,
+         hazard=dict(kind="ice", every=8, count=2, dmg=215),
+         spawns=[("frostbeetle", 5, 10, 99), ("moth", 10, 9, 99), ("stag", 28, 22, 99)],
+         events=[dict(t=70, units=[("swallow", 1)], msg="ALERTA: Oreneta!"), dict(t=130, units=[("swallow", 2)], msg="Dues orenetes!")]),
+    dict(name="24. EL NIU DE LA VESPA REINA", diff=24, rec=15, par=420, base_hp=26988, mult=2.43, amult=1.65, cap=10,
          boss=True, cat_hp=6000, bg="bg_lair", base="base_queen_0", base_off=0, amb="dust", clouds=False,
          spawns=[("wasp", 6, 13, 99), ("stag", 16, 26, 99), ("hornet", 35, 30, 99), ("hornet_guard", 70, 55, 99)],
          events=[]),
@@ -4022,7 +4051,13 @@ STAGE_REWARD = [(390, 3),
                 (9880, 24),
                 (11700, 28),
                 (14300, 32),
-                (26000, 60)]
+                (15500, 36),
+                (17000, 40),
+                (18500, 44),
+                (20000, 48),
+                (21500, 52),
+                (23000, 56),
+                (30000, 80)]
 # música per tipus de fons
 MUSIC_BY_BG = {"bg_meadow": "calm", "bg_farm": "calm", "bg_beach": "calm", "bg_jungle": "calm", "bg_desert": "calm",
                "bg_snow": "calm", "bg_forest": "tense", "bg_swamp": "tense", "bg_mine": "tense", "bg_cave": "tense",
@@ -4048,7 +4083,13 @@ MISSIONS = [
     dict(id="clear15", text="Supera el nivell 15", kind="stage", val=15, bee="woolcarder", pollen=17),
     dict(id="clear16", text="Supera el nivell 16", kind="stage", val=16, pollen=18),
     dict(id="clear17", text="Supera el nivell 17", kind="stage", val=17, pollen=19),
-    dict(id="clear18", text="Derrota la Vespa Reina", kind="stage", val=18, bee="queen", pollen=30),
+    dict(id="clear18", text="Supera el nivell 18", kind="stage", val=18, pollen=20),
+    dict(id="clear19", text="Supera el nivell 19", kind="stage", val=19, pollen=22),
+    dict(id="clear20", text="Supera el nivell 20", kind="stage", val=20, pollen=24),
+    dict(id="clear21", text="Supera el nivell 21", kind="stage", val=21, pollen=26),
+    dict(id="clear22", text="Supera el nivell 22", kind="stage", val=22, pollen=28),
+    dict(id="clear23", text="Supera el nivell 23", kind="stage", val=23, pollen=30),
+    dict(id="clear24", text="Derrota la Vespa Reina", kind="stage", val=24, bee="queen", pollen=40),
     dict(id="kills50", text="Derrota 50 enemics", kind="stat", stat="kills", val=50, mel=300),
     dict(id="kills300", text="Derrota 300 enemics", kind="stat", stat="kills", val=300, pollen=5),
     dict(id="kills1000", text="Derrota 1000 enemics", kind="stat", stat="kills", val=1000, mel=1500),
@@ -4077,7 +4118,7 @@ MISSIONS += [
     dict(id="surv420", text="Aguanta 7 minuts en supervivència", kind="calc", calc="surv", val=420, pollen=14),
     dict(id="stars18", text="Aconsegueix 18 estrelles", kind="calc", calc="stars", val=18, pollen=6),
     dict(id="stars40", text="Aconsegueix 40 estrelles", kind="calc", calc="stars", val=40, pollen=12),
-    dict(id="stars54", text="Totes les estrelles!", kind="calc", calc="stars", val=54, pollen=25),
+    dict(id="stars72", text="Totes les estrelles!", kind="calc", calc="stars", val=72, pollen=30),
 ]
 WEEKLY_POOL = [
     dict(id="w_wins", stat="wins", val=8, text="Guanya 8 nivells", pollen=10),
@@ -4158,7 +4199,7 @@ TRANS = {"stages": ("hex", (214, 170, 70)), "upgrade": ("wipe_r", (200, 140, 50)
          "capsules": ("iris", (200, 130, 40)), "bestiary": ("fade", (120, 84, 38)), "missions": ("hex", (190, 140, 56)),
          "shop": ("wipe_r", (214, 160, 60)), "hive": ("hex", (214, 170, 70)), "stats": ("wipe_l", (190, 140, 56)),
          "options": ("fade", (110, 80, 40)), "base": ("fade", (60, 44, 24)), "title": ("fade", (40, 30, 16)),
-         "intro": ("fade", (20, 14, 8)), "tutorial": ("hex", (214, 170, 70)), "help": ("fade", (60, 44, 24))}
+         "intro": ("fade", (20, 14, 8)), "win": ("drip", (214, 170, 60)), "lose": ("drip", (80, 40, 40)), "dialogue": ("fade", (30, 24, 14)), "tutorial": ("hex", (214, 170, 70)), "help": ("fade", (60, 44, 24))}
 
 TIPS = [
     ("Supera nivells per", "desbloquejar abelles", "noves a Missions!"),
@@ -4171,21 +4212,49 @@ TIPS = [
     ("Compra millores del", "rusc: més vida,", "diners i trompa!"),
     ("Cada dia: regal gratis", "i tres missions", "diàries noves."),
 ]
+PROTA = "Flor"
+CONT_COST, CONT_MAX = 30, 2
+LEVEL_DIALOGUES = {
+    0: ["Hola! Sóc la Flor, la nova guardiana del Gran Rusc.", "Genera abelles amb 1-6 i protegeix el rusc. Jo us guiaré!"],
+    2: ["Les llagostes ataquen en grup. Les abelles tanques els aguantaran el cop."],
+    4: ["Ens espera un Cranc Rei a la platja... Porta tiradores per tocar els mosquits voladors."],
+    7: ["Les mines! Cauen roques: no deixis totes les abelles juntes."],
+    9: ["El fred alenteix les abelles. Les de control ens poden ajudar."],
+    12: ["Les orenetes piquen en picat. Guarda la trompa de pol·len per a elles!"],
+    15: ["Ja som a prop! Evoluciona les teves abelles de nivell 15 al Taller."],
+    17: ["Aquests territoris són més perillosos. Les millores del Rusc seran clau."],
+    20: ["Això és molt dur... Recorda que l'Eixam (Q) i la Cura (E) ens poden salvar."],
+    23: ["Aquest és el niu de la Vespa Reina... Si perdem, el seu poder esborrarà la llum de les abelles que lluitin.",
+         "Si caiem, podem pagar 30 de pol·len per continuar. Tu pots, guardiana!"],
+}
 INTRO_SCENES = [
     (6.0, "Fa molt de temps, al Prat de Flors, el Gran Rusc vivia en pau. Les abelles collien pol·len i feien la mel més dolça del món.",
      dict(snd="magic")),
     (6.0, "La Reina Melissa, mare de totes les abelles, vetllava pel rusc des del seu tron daurat.", dict()),
     (7.0, "Però un dia un núvol negre va tapar el sol... i un brogit de ales va omplir el cel.", dict(snd="roar")),
     (7.0, "Era la Vespa Reina, cruel i golafre. Va jurar quedar-se tota la mel del món.", dict(snd="boom")),
-    (7.0, "Els seus exèrcits van arrasar boscos, deserts, platges, mines i volcans. Fins a 18 territoris van caure!",
+    (7.0, f"Els seus exèrcits van arrasar boscos, deserts, platges, mines i volcans. Fins a {len(STAGES)} territoris van caure!",
      dict(snd="warn")),
     (7.0, "El Gran Rusc va resistir fins a l'última gota de mel... però la Reina Melissa va quedar ferida.", dict(snd="lose")),
     (8.0, "Abans de caure, va confiar la seva llum a una jove abella: tu.", dict(snd="levelup")),
     (7.0, "Amb la llum de la Reina, abelles de totes les castes van tornar a l'alba per defensar la seva llar.", dict(snd="reveal")),
-    (8.0, "El camí té 18 territoris. Millora les abelles, reuneix l'eixam i derrota la Vespa Reina al seu niu. Estàs a punt?",
+    (8.0, f"El camí té {len(STAGES)} territoris. Millora les abelles, reuneix l'eixam i derrota la Vespa Reina al seu niu. Estàs a punt?",
      dict(snd="ability")),
     (4.0, "", dict(snd="win")),
 ]
+WIN_SCENES = [
+    (6.0, "La Vespa Reina va deixar anar un últim udol... i el seu niu es va enfonsar entre flaixos de llum.", dict(snd="boom")),
+    (6.0, f"El cel es va aclarir. Els {len(STAGES)} territoris van ser alliberats i tots els ruscs van tornar a zumzejar d'alegria.", dict(snd="win")),
+    (7.0, "La Reina Melissa es va recuperar i va coronar la Flor com a Guardiana del Gran Rusc.", dict(snd="levelup")),
+    (7.0, "El Prat de Flors va tornar a florir... però la mel sempre atrau perills. Aquesta història continua.", dict(snd="reveal")),
+    (4.0, "", dict(snd="win")),
+]
+LOSE_SCENES = [
+    (6.0, "La Vespa Reina va riure mentre el Gran Rusc s'enfonsava en la foscor.", dict(snd="lose")),
+    (8.0, "El seu poder va esborrar la llum de les abelles que van lluitar: van perdre tots els nivells i van quedar captives.", dict(snd="roar")),
+    (8.0, "Però la Flor no es va rendir. Per rescatar-les hauràs de derrotar enemics: cada abella necessita el seu nombre. Mira la pestanya Rescat de Missions.", dict(snd="levelup")),
+]
+RESCUE_NEED = {"common": 120, "rare": 220, "legend": 400}
 INTRO_TOTAL = sum(sc[0] for sc in INTRO_SCENES)
 INTRO_MUSIC = ("calm", "calm", "tense", "tense", "tense", "tense", "epic", "epic", "epic", "calm")
 TUT_CARDS = [
@@ -4252,7 +4321,7 @@ def default_save():
                            dmg=0, by_bee={}),
                 stars={}, seen=[], pity={"0": 0, "1": 0}, daily="", streak=0, tutorial_done=False,
                 hive={}, items={"money": 0, "hp": 0, "cannon": 0}, armed={"money": False, "hp": False, "cannon": False},
-                slot6=False, intro_done=False, tut_done=False, surv_best=0.0, surv_kills=0, evo={}, frag=0, presets=[[], [], []],
+                slot6=False, captured={}, dlg_seen=[], intro_done=False, tut_done=False, surv_best=0.0, surv_kills=0, evo={}, frag=0, presets=[[], [], []],
                 wk={"week": "", "ids": [], "claimed": [], "prog": {}},
                 shop={"slot": "", "day": "", "bee_bought": False, "lvl_bought": False, "mel": {}},
                 dm={"date": "", "ids": [], "claimed": [], "prog": {}}, opts=default_opts())
@@ -4296,8 +4365,17 @@ def load_save():
             d["presets"] = [[], [], []]
         if not isinstance(d.get("evo"), dict):
             d["evo"] = {}
+        if not isinstance(d.get("captured"), dict):
+            d["captured"] = {}
+        if not isinstance(d.get("dlg_seen"), list):
+            d["dlg_seen"] = []
         if not isinstance(d.get("hive"), dict):
             d["hive"] = {}
+    if isinstance(raw, dict) and raw.get("ver", 0) < 11:       # 6 nivells nous abans del cap final
+        if d["progress"] >= 18:
+            d["progress"] = 17
+        if "17" in d["stars"]:
+            d["stars"]["23"] = d["stars"].pop("17")
     d["ver"] = SAVE_VERSION
     d["owned"] = {k: min(MAX_LV, int(v)) for k, v in d["owned"].items() if k in BEE_BY_KEY}
     d["deck"] = [k for k in d["deck"] if k in d["owned"]][:(DECK_MAX if d.get("slot6") else DECK_SIZE)]
@@ -5276,6 +5354,8 @@ class GameUI:
 
     def draw_night(self):
         n = 0.0 if self.headless else night_amount(self.time)
+        if self.stage.get("night") and not self.headless:
+            n = max(n, 0.9)
         if n <= 0.01:
             return
         ov = pygame.Surface((W, UI_Y), pygame.SRCALPHA)
@@ -5353,6 +5433,46 @@ class GameUI:
             pygame.draw.rect(screen, (60, 80, 70), box)
             txt(tt, box.centerx, box.centery, FONT_S, C_TXT, center=True, shadow=False)
         self.draw_battle_ui()
+
+    def draw_continue(self):
+        veil = pygame.Surface((W, H), pygame.SRCALPHA)
+        veil.fill((20, 0, 0, 190))
+        screen.blit(veil, (0, 0))
+        txt("HAS CAIGUT!", W // 2, 120, FONT_B, (240, 90, 70), center=True)
+        txt("Vols continuar? Els enemics retrocediran i tindràs el moneder ple.", W // 2, 176, FONT, C_TXT, center=True)
+        txt("Continuacions restants: %d" % (CONT_MAX - self.continues), W // 2, 204, FONT_S, (250, 220, 130), center=True)
+        ok = self.sv["pollen"] >= CONT_COST
+        self.ui_button(pygame.Rect(W // 2 - 190, 250, 380, 58), "Continua  (%d pol·len)" % CONT_COST, self.accept_continue, ok, FONT_M)
+        self.ui_button(pygame.Rect(W // 2 - 190, 322, 380, 50), "Abandona", self.decline_continue, True, FONT_M)
+        txt("Tens %d pol·len" % self.sv["pollen"], W // 2, 396, FONT, C_GOLD, center=True)
+
+    def draw_dialogue(self):
+        d = self.dlg
+        self._bg(d.get("bg", "bg_meadow"))
+        self._veil(0.45, (10, 8, 6))
+        a = self.anim
+        self._glow(190, 330, 150, (255, 214, 90), 60 + 20 * math.sin(a * 2))
+        self._walker("honey", 190, 400 + math.sin(a * 3) * 5, 250, 180, rate=12)
+        panel = pygame.Rect(340, 250, 620, 200)
+        pygame.draw.rect(screen, C_BORDER, panel.inflate(8, 8), border_radius=14)
+        pygame.draw.rect(screen, (252, 246, 228), panel, border_radius=12)
+        txt(PROTA, panel.x + 20, panel.y + 12, FONT_M, (150, 90, 20), shadow=False)
+        line = d["lines"][min(d["i"], len(d["lines"]) - 1)]
+        n = len(line) if d.get("full") else int(d["t"] * 30)
+        left = n
+        for i, ln in enumerate(wrap_text(line, FONT_M, panel.w - 44)[:4]):
+            part = ln[:max(0, left)]
+            left -= len(ln) + 1
+            if part:
+                txt(part, panel.x + 20, panel.y + 52 + i * 30, FONT_M, (50, 34, 20), shadow=False)
+        done = n >= len(line)
+        if done and int(a * 2) % 2 == 0:
+            txt("Clica per continuar  >", panel.right - 18, panel.bottom - 24, FONT_S, (150, 90, 20), right=True, shadow=False)
+        self.ui_button(pygame.Rect(W - 140, 16, 118, 34), "Salta >>", self.dlg_skip_all, True, FONT_S)
+
+    def dlg_skip_all(self):
+        self.dlg["i"] = len(self.dlg["lines"])
+        self.dlg_finish()
 
     def draw_pause(self):
         veil = pygame.Surface((W, H), pygame.SRCALPHA)
@@ -5638,10 +5758,14 @@ class GameUI:
 
     def draw_missions(self):
         self.chrome("Missions", theme="missions")
-        for i, (lab, key, nn) in enumerate((("Diàries", "daily", self.daily_claimable()),
-                                           ("Setmanals", "weekly", self.weekly_claimable()),
-                                           ("Històriques", "hist", self.claimable()))):
-            r = pygame.Rect(20 + i * 210, 56, 200, 34)
+        tabs = [("Diàries", "daily", self.daily_claimable()), ("Setmanals", "weekly", self.weekly_claimable()),
+                ("Històriques", "hist", self.claimable())]
+        if self.sv["captured"]:
+            tabs.append(("Rescat", "rescue", len(self.sv["captured"])))
+        elif self.mtab == "rescue":
+            self.mtab = "daily"
+        for i, (lab, key, nn) in enumerate(tabs):
+            r = pygame.Rect(20 + i * 180, 56, 172, 34)
             self.ui_button(r, lab + (f" ({nn})" if nn else ""), (lambda k=key: setattr(self, "mtab", k)), self.mtab != key, FONT)
         if self.mtab == "daily":
             dm = self.sv["dm"]
@@ -5672,6 +5796,20 @@ class GameUI:
             ready = self.gift_ready()
             self.ui_button(pygame.Rect(r.right - 190, r.y + 18, 176, 42), "RECULL" if ready else "JA RECOLLIT", self.claim_gift, ready, FONT)
             txt("Les missions diàries es renoven cada dia.", W // 2, 420, FONT_S, C_TXT, center=True)
+            return
+        if self.mtab == "rescue":
+            txt("Derrota enemics a les batalles per rescatar-les", 560, 62, FONT_S, C_TXT)
+            for i, (k, prog) in enumerate(list(self.sv["captured"].items())[:6]):
+                b = BEE_BY_KEY[k]
+                need = RESCUE_NEED[b["rarity"]]
+                r = pygame.Rect(16, 104 + i * 62, 968, 54)
+                self.card(r, b["rarity"])
+                sl = fit(IMG["sil_" + k], 70, 44)
+                screen.blit(sl, sl.get_rect(center=(r.x + 46, r.centery)))
+                txt(b["name"], r.x + 94, r.y + 6, FONT, C_TXT)
+                pygame.draw.rect(screen, (40, 14, 10), (r.x + 94, r.y + 32, 520, 14))
+                pygame.draw.rect(screen, (170, 90, 220), (r.x + 94, r.y + 32, int(520 * min(1.0, prog / need)), 14))
+                txt(f"{min(prog, need)}/{need} enemics derrotats", r.x + 640, r.y + 16, FONT, C_GOLD)
             return
         if self.mtab == "weekly":
             wk = self.sv["wk"]
@@ -6107,22 +6245,43 @@ class GameUI:
         self.ui_button(pygame.Rect(r.x + 90, r.bottom - 52, r.w - 180, 40), "Continua", lambda: self.go(back), True, FONT)
 
     # ======================= HISTÒRIA INICIAL
+    def story_list(self):
+        return {"intro": INTRO_SCENES, "win": WIN_SCENES, "lose": LOSE_SCENES}[self.story_kind]
+
+    def story_music(self):
+        i = self.intro_scene()[0]
+        if self.story_kind == "intro":
+            return INTRO_MUSIC[min(i, len(INTRO_MUSIC) - 1)]
+        if self.story_kind == "win":
+            return "epic" if i < 2 else "calm"
+        return "boss" if i == 0 else "tense"
+
+    def start_story(self, kind):
+        self.story_kind = kind
+        self.intro_t = 0.0
+        self.intro_i = 0
+        self.intro_full = False
+        self.intro_replay = False
+        self.go("intro")
+        self.intro_enter()
+
     def intro_scene(self):
-        k = min(self.intro_i, len(INTRO_SCENES) - 1)
-        return k, self.intro_t, INTRO_SCENES[k][0]
+        k = min(self.intro_i, len(self.story_list()) - 1)
+        return k, self.intro_t, self.story_list()[k][0]
 
     def intro_enter(self):
-        sound = INTRO_SCENES[min(self.intro_i, len(INTRO_SCENES) - 1)][2].get("snd")
+        lst = self.story_list()
+        sound = lst[min(self.intro_i, len(lst) - 1)][2].get("snd")
         if sound:
             sfx(sound)
 
     def intro_advance(self):
         """1r clic: mostra tot el text. 2n clic: passa a l'escena següent."""
-        full = INTRO_SCENES[self.intro_i][1]
+        full = self.story_list()[self.intro_i][1]
         if full and not self.intro_full and int(self.intro_t * 32) < len(full):
             self.intro_full = True
             return
-        if self.intro_i + 1 >= len(INTRO_SCENES):
+        if self.intro_i + 1 >= len(self.story_list()):
             self.finish_intro()
             return
         self.intro_i += 1
@@ -6131,6 +6290,7 @@ class GameUI:
         self.intro_enter()
 
     def start_intro(self, replay=False, back="help"):
+        self.story_kind = "intro"
         self.story_back = back
         self.intro_t = 0.0
         self.intro_i = 0
@@ -6141,6 +6301,9 @@ class GameUI:
 
     def finish_intro(self):
         if self.state != "intro" and not self.trans:
+            return
+        if self.story_kind in ("win", "lose"):
+            self.go(self.story_kind)
             return
         self.sv["intro_done"] = True
         self.save()
@@ -6377,11 +6540,13 @@ class GameUI:
             txt(name, W // 2, 39, FONT_M, (250, 224, 190), center=True)
             if lt > 1.8:
                 txt("CONQUERIT", W // 2, 84, FONT_M, (240, 80, 64), center=True)
-            conq = min(18, 1 + int(t / SLOT * 3))
-            for k in range(18):
-                pygame.draw.circle(screen, C_BORDER, (W // 2 - 153 + k * 18, 118), 7)
-                pygame.draw.circle(screen, (230, 70, 60) if k < conq else (84, 64, 54), (W // 2 - 153 + k * 18, 118), 5)
-            txt("Territoris conquerits: %d/18" % conq, W // 2, 140, FONT_S, (250, 204, 184), center=True)
+            conq = min(len(STAGES), 1 + int(t / SLOT * 3))
+            nst = len(STAGES)
+            for k in range(nst):
+                px_ = W // 2 - (nst - 1) * 7 + k * 14
+                pygame.draw.circle(screen, C_BORDER, (px_, 118), 6)
+                pygame.draw.circle(screen, (230, 70, 60) if k < conq else (84, 64, 54), (px_, 118), 4)
+            txt("Territoris conquerits: %d/%d" % (conq, nst), W // 2, 140, FONT_S, (250, 204, 184), center=True)
         elif sc == 5:
             self._bg("bg_meadow")
             self._veil(0.72)
@@ -6443,11 +6608,12 @@ class GameUI:
         elif sc == 8:
             self._bg("bg_meadow")
             self._veil(0.5, (20, 14, 8))
-            pts = [(70 + i * 50, 300 + 80 * math.sin(i * 0.7)) for i in range(18)]
-            for k in range(17):
+            nst = len(STAGES)
+            pts = [(60 + i * 38, 300 + 80 * math.sin(i * 0.55)) for i in range(nst)]
+            for k in range(nst - 1):
                 pygame.draw.line(screen, (60, 40, 20), pts[k], pts[k + 1], 7)
                 pygame.draw.line(screen, (214, 176, 98), pts[k], pts[k + 1], 3)
-            lit = min(18, int(t / (d * 0.75) * 18) + 1)
+            lit = min(nst, int(t / (d * 0.75) * nst) + 1)
             for k, p in enumerate(pts):
                 pygame.draw.circle(screen, C_BORDER, (int(p[0]), int(p[1])), 12)
                 pygame.draw.circle(screen, (240, 200, 70) if k < lit else (90, 78, 60), (int(p[0]), int(p[1])), 9)
@@ -6472,6 +6638,128 @@ class GameUI:
         self._vignette()
         self._veil(max(0.0, 1.0 - t / 0.6), (0, 0, 0))     # entrada des del negre
 
+    def _end_scene_draw(self, kind, sc, t, d):
+        a = self.anim
+        hive = IMG["base_hive"]
+        hx, hy = 70, GROUND + 28 - hive.get_height()
+        flashes = self.sv["opts"].get("flashes", True)
+        if kind == "win":
+            if sc == 0:                                   # la Reina esclata
+                self._bg("bg_lair")
+                self._veil(0.25, (70, 0, 12))
+                fr = IMG["base_queen_2"]
+                fr = fr[int(a * 6) % len(fr)] if isinstance(fr, list) else fr
+                vi = fit(fr, 520, 400)
+                amp = 5 * max(0.0, 1 - t / 3.5)
+                tmp = vi.copy()
+                tmp.set_alpha(int(255 * max(0.0, 1 - max(0.0, t - 2.4) / 2.2)))
+                screen.blit(tmp, tmp.get_rect(center=(W // 2 + random.uniform(-amp, amp), 215 + random.uniform(-amp, amp))))
+                if t < 5.0:
+                    for k in range(46):
+                        ang = k * 0.137 + 0.4
+                        sp_ = 80 + (k * 37) % 260
+                        px = W // 2 + math.cos(ang) * sp_ * min(t, 3.0) * 0.9
+                        py = 215 + math.sin(ang) * sp_ * min(t, 3.0) * 0.7 + 60 * min(t, 3.0) ** 2 * 0.3
+                        col = ((255, 220, 90), (255, 140, 50), (255, 250, 230))[k % 3]
+                        pygame.draw.circle(screen, col, (int(px), int(py)), max(1, int(7 * max(0.0, 1 - t / 4.5))))
+                    pygame.draw.circle(screen, (255, 240, 200), (W // 2, 215), max(2, int((t * 240) % 520)), 4)
+                    if flashes:
+                        fl = pygame.Surface((W, H), pygame.SRCALPHA)
+                        fl.fill((255, 250, 230, int(190 * max(0.0, 1 - ((t * 2.2) % 1.0) / 0.35))))
+                        screen.blit(fl, (0, 0))
+            elif sc == 1:                                 # el cel s'aclareix
+                self._bg("bg_meadow")
+                self._glow(150, 70, 120, (255, 236, 150), 110)
+                for i in range(3):
+                    screen.blit(IMG["cloud_%d" % i], (((t * (6 + i * 4) + i * 420) % (W + 380)) - 190, 26 + i * 46))
+                screen.blit(hive, (hx, hy))
+                for i, k in enumerate(("honey", "bumble", "carpenter", "mason", "orchid", "arctic", "nurse", "sweat", "killer", "queen")):
+                    ang = a * 0.7 + i * 0.63
+                    self._walker(k, 520 + math.cos(ang) * 300, 190 + math.sin(ang * 1.4) * 70 + 14 * math.sin(a * 5 + i), 78, 58, rate=14)
+                conf = ((236, 200, 70), (220, 90, 70), (96, 170, 220), (120, 200, 110), (230, 140, 200), (250, 250, 240))
+                for i, (x, y, ph, sp) in enumerate(self.amb):
+                    px = (x * 1.3 + 40 * math.sin(a * 1.7 + ph)) % W
+                    py = ((y * 1.7 + a * 90 * sp) % (UI_Y + 40)) - 20
+                    pygame.draw.rect(screen, conf[i % 6], (int(px), int(py), 6, 10))
+            elif sc == 2:                                 # la Flor és coronada
+                self._bg("bg_meadow")
+                screen.blit(hive, (hx, hy))
+                beam = pygame.Surface((W, H), pygame.SRCALPHA)
+                pygame.draw.polygon(beam, (255, 230, 140, 46), [(480, 0), (680, 0), (820, UI_Y), (330, UI_Y)])
+                screen.blit(beam, (0, 0))
+                self._glow(300, 250, 120, (255, 214, 90), 70)
+                self._walker("queen", 300, 300 + math.sin(a * 2) * 5, 170, 124, rate=8)
+                self._glow(580, 250, 130, (255, 236, 150), 90 + 40 * math.sin(a * 4))
+                by = 310 + math.sin(a * 3) * 5
+                self._walker("honey", 580, by, 150, 110, rate=14)
+                cy_ = by - 112
+                pygame.draw.polygon(screen, (60, 40, 8), [(556, cy_ + 2), (556, cy_ - 22), (568, cy_ - 10), (580, cy_ - 28), (592, cy_ - 10), (604, cy_ - 22), (604, cy_ + 2)])
+                pygame.draw.polygon(screen, (250, 206, 70), [(559, cy_), (559, cy_ - 18), (569, cy_ - 8), (580, cy_ - 24), (591, cy_ - 8), (601, cy_ - 18), (601, cy_)])
+                for gx, gc in ((569, (220, 60, 60)), (580, (90, 200, 230)), (591, (120, 220, 120))):
+                    pygame.draw.circle(screen, gc, (gx, int(cy_ - 4)), 3)
+                for k in range(16):
+                    ang = a * 1.3 + k * 0.4
+                    pygame.draw.rect(screen, (255, 244, 180), (int(580 + math.cos(ang) * (70 + 20 * math.sin(a + k))), int(by - 60 + math.sin(ang) * 60), 3, 3))
+                self._bubble(300, 110, "Reina Melissa", "Has salvat el nostre món, Flor. La llum sempre va ser teva.", t, (150, 90, 20), 340)
+            else:
+                self._bg("bg_meadow")
+                self._veil(0.28, (255, 140, 60))
+                if self.logo is None:
+                    self.logo = self.build_logo()
+                self._glow(W // 2, 200, 300, (255, 214, 90), 70)
+                screen.blit(self.logo, self.logo.get_rect(center=(W // 2, 190 + math.sin(a * 1.6) * 4)))
+                for i, k in enumerate(("honey", "bumble", "carpenter", "sweat", "orchid", "leafcutter", "queen")):
+                    x = ((a * (46 + i * 9) + i * 170) % (W + 200)) - 100
+                    self._walker(k, x, 380 + 24 * math.sin(a * 2 + i) - (i % 3) * 36, 70, 50, rate=14)
+                if sc == 4:
+                    txt("Gràcies per jugar!", W // 2, 330, FONT_M, (255, 240, 200), center=True)
+        else:                                             # DERROTA
+            if sc == 0:
+                self._bg("bg_meadow")
+                self._veil(0.82, (30, 0, 10))
+                shk = random.uniform(-2, 2)
+                screen.blit(hive, (hx + shk, hy))
+                self._embers(t, (255, 90, 40), 26)
+                for k in range(4):
+                    ph_ = (t * 0.5 + k * 0.25) % 1.0
+                    smk = pygame.Surface((90, 90), pygame.SRCALPHA)
+                    pygame.draw.circle(smk, (60, 56, 62, int(120 * (1 - ph_))), (45, 45), 22 + int(ph_ * 24))
+                    screen.blit(smk, (int(hx + 60 + k * 16 - 45), int(hy - 20 - ph_ * 130)))
+                q0 = IMG["base_queen_0"]
+                q0 = q0[0] if isinstance(q0, list) else q0
+                qs = self._sil(fit(q0, 420, 340))
+                screen.blit(qs, qs.get_rect(center=(W - 230, 200 + math.sin(a * 5) * 6)))
+                for ex_ in (-34, 34):
+                    pygame.draw.circle(screen, (255, 50, 40), (W - 230 + ex_, 150), 6 + int(2 * math.sin(a * 6)))
+                if t % 4.0 < 0.3 and flashes:
+                    fl = pygame.Surface((W, H), pygame.SRCALPHA)
+                    fl.fill((255, 255, 255, int(200 * (1 - (t % 4.0) / 0.3))))
+                    screen.blit(fl, (0, 0))
+            else:
+                self._bg("bg_lair")
+                self._veil(0.55, (30, 0, 50))
+                keys = (self.captured_now or ["honey"])[:6]
+                wave = min(1.0, t / 2.0)
+                pygame.draw.circle(screen, (140, 60, 200), (W - 100, 200), int(wave * 1100), 6)
+                for i, k in enumerate(keys):
+                    x = 140 + i * 140
+                    y = 330
+                    gl = 0.5 + 0.5 * math.sin(a * 3 + i)
+                    self._glow(x, y - 20, 70, (170, 80, 230), 40 + 40 * gl)
+                    sl = fit(IMG["sil_" + k], 96, 64)
+                    screen.blit(sl, sl.get_rect(center=(x, y - 20)))
+                    for bx_ in range(-44, 45, 16):
+                        pygame.draw.line(screen, (80, 66, 96), (x + bx_, y - 70), (x + bx_, y + 24), 3)
+                    pygame.draw.line(screen, (80, 66, 96), (x - 48, y - 70), (x + 48, y - 70), 4)
+                    pygame.draw.line(screen, (80, 66, 96), (x - 48, y + 24), (x + 48, y + 24), 4)
+                    txt(BEE_BY_KEY[k]["name"][:14], x, y + 42, FONT_S, (210, 190, 240), center=True)
+                if sc == 2:
+                    self._glow(W // 2 + 20, 130, 110, (255, 214, 90), 70)
+                    self._walker("honey", W // 2 + 20, 170 + math.sin(a * 3) * 5, 150, 110, rate=14)
+                    self._bubble(W // 2 + 40, 40, PROTA, "Les rescatarem, una per una!", t, (150, 90, 20), 330)
+        self._vignette()
+        self._veil(max(0.0, 1.0 - t / 0.6), (0, 0, 0))
+
     def draw_intro(self):
         global screen
         sc, t, d = self.intro_scene()
@@ -6480,7 +6768,10 @@ class GameUI:
             self.intro_surf = pygame.Surface((W, UI_Y))
         screen = self.intro_surf            # l'escena es dibuixa a part i no queda tapada pel text
         try:
-            self._intro_scene_draw(sc, t, d)
+            if self.story_kind == "intro":
+                self._intro_scene_draw(sc, t, d)
+            else:
+                self._end_scene_draw(self.story_kind, sc, t, d)
         finally:
             screen = real
         screen.fill((26, 18, 10))
@@ -6495,7 +6786,7 @@ class GameUI:
         pygame.draw.rect(screen, C_BORDER, panel.inflate(6, 6))
         pygame.draw.rect(screen, (40, 30, 18), panel)
         pygame.draw.rect(screen, (214, 176, 98), panel, 2)
-        full = INTRO_SCENES[sc][1]
+        full = self.story_list()[sc][1]
         n = len(full) if self.intro_full else int(t * 32)
         done = n >= len(full)
         left = n
@@ -6606,9 +6897,11 @@ class GameUI:
         self.chrome("Com es juga", theme="base", back_to="title")
         left = [("Objectiu", ["Destrueix el niu enemic abans que", "ells destrueixin el teu rusc."]),
                 ("Abelles i diners", ["Genera abelles amb 1-6 (costen diners).", "Els diners pugen sols i en matar.", "W millora el moneder: més ingressos,", "menys recàrrega i més botí."]),
+                ("Vespa Reina", ["Si perds contra ella, les abelles que lluitin", "perden els nivells i les hauràs de rescatar", "derrotant enemics (Missions > Rescat)."]),
                 ("Rols", ["Tanc: els enemics l'ataquen primer.", "Atacant: molt dany a prop.", "Tirador: de lluny i toca els voladors.", "Control: alenteix o atordeix. Suport: cura.", "3 rols diferents = +8% de vida."])]
         right = [("Trompa i habilitats", ["ESPAI: trompa de pol·len (dany a tots).", "Q: Eixam (4 abelles gratis).", "E: Cura (abelles i rusc)."]),
                  ("Voladors", ["Les abelles cos a cos fan -30% de dany als", "voladors. Les tiradores no."]),
+                 ("Si caus", ["Pots continuar per 30 pol·len: els enemics", "retrocedeixen i tens el moneder ple."]),
                  ("Nit i dia", ["Si el nivell dura molt, es fa de nit i,", "més tard, torna a ser de dia."]),
                  ("Progrés", ["Millora abelles al Taller, evoluciona-les al 15,", "compra millores del Rusc i prova la", "Supervivència infinita."])]
         self.ui_button(pygame.Rect(280, H - 42, 230, 36), "Veure la història", lambda: self.start_intro(True), True, FONT_S)
@@ -6655,8 +6948,12 @@ class GameUI:
         for i, ln in enumerate(lines):
             txt(ln, 90, 250 + i * 34, FONT_M if i == 2 else FONT, C_GOLD if i >= 2 else C_TXT)
         n = self.claimable()
+        yy = 250 + len(lines) * 34 + 8
+        for k in res.get("rescued", []):
+            txt("Has rescatat: " + BEE_BY_KEY[k]["name"], 90, yy, FONT, (150, 230, 150))
+            yy += 28
         if n:
-            txt(f"Tens {n} missió(ns) per cobrar!", 90, 250 + len(lines) * 34 + 8, FONT, (250, 236, 180))
+            txt(f"Tens {n} missió(ns) per cobrar!", 90, yy, FONT, (250, 236, 180))
         txt("Dany per abella", 560, 240, FONT, C_TXT)
         dm = res["dmg"]
         top = max([v for _k, v in dm] + [1])
@@ -6681,7 +6978,7 @@ class GameUI:
         elif not res.get("survival") or True:
             for i, h_ in enumerate(res.get("hints", [])):
                 txt("Consell: " + h_, W // 2, 400 + i * 24, FONT_S, (250, 236, 180), center=True)
-        self.ui_button(pygame.Rect(W // 2 - 140, 470, 280, 50), "Continua", lambda: self.go("stages"), True, FONT_M)
+        self.ui_button(pygame.Rect(W // 2 - 140, 470, 280, 50), "Continua", self.after_result, True, FONT_M)
 
     # =================================================== DISTRIBUCIÓ
     def draw(self):
@@ -6709,7 +7006,9 @@ class GameUI:
             self.draw_title()
         elif st == "play":
             self.draw_play()
-            if self.paused:
+            if self.cont_prompt:
+                self.draw_continue()
+            elif self.paused:
                 self.draw_pause()
         elif st in ("win", "lose"):
             self.draw_result()
@@ -6908,6 +7207,9 @@ class Game(GameUI):
         self.sv = default_save() if headless else load_save()
         self.state = "title"
         self.intro_t = 0.0
+        self.story_kind = "intro"
+        self.captured_now = []
+        self.rescued_now = []
         self.story_back = "help"
         self.intro_i = 0
         self.intro_full = False
@@ -6921,6 +7223,9 @@ class Game(GameUI):
         self.trans = None
         self.logo = None
         self.shake = 0.0
+        self.dlg = None
+        self.continues = 0
+        self.cont_prompt = False
         self.ui_floats = []
         self.hitstop = 0.0
         self.world = None
@@ -7021,8 +7326,76 @@ class Game(GameUI):
             return
         if self.headless:
             return self.start(i)
+        lines = LEVEL_DIALOGUES.get(i)
+        boss = STAGES[i]["boss"]
+        if lines and (boss or str(i) not in self.sv["dlg_seen"]):
+            if not boss:
+                self.sv["dlg_seen"].append(str(i))
+                self.save()
+            self.start_dialogue(lines, lambda: self._launch_level(i), STAGES[i]["bg"])
+            return
+        self._launch_level(i)
+
+    def _launch_level(self, i):
         self.trans = dict(t=0.0, dur=0.7, style="iris", color=(20, 14, 10), label=STAGES[i]["name"],
                           apply=lambda: self.start(i), done=False)
+
+    def start_dialogue(self, lines, after, bg="bg_meadow"):
+        self.dlg = dict(lines=list(lines), i=0, t=0.0, full=False, after=after, bg=bg)
+        self.go("dialogue")
+
+    def dlg_advance(self):
+        d = self.dlg
+        if d["i"] >= len(d["lines"]):
+            return
+        if not d.get("full") and int(d["t"] * 30) < len(d["lines"][d["i"]]):
+            d["full"] = True
+            return
+        d["i"] += 1
+        d["t"] = 0.0
+        d["full"] = False
+        if d["i"] >= len(d["lines"]):
+            self.dlg_finish()
+
+    def dlg_finish(self):
+        if self.state != "dialogue" or self.dlg.get("closing"):
+            return
+        self.dlg["closing"] = True
+        after = self.dlg["after"]
+        self.dlg["after"] = None
+        if after:
+            after()
+
+    def after_result(self):
+        """Després d'una derrota, la Flor de vegades dona un consell."""
+        res = self.result
+        hints = res.get("hints") if res else None
+        if hints and not res.get("survival") and not self.headless and random.random() < 0.55:
+            self.start_dialogue(["No pateixis! Crec que podem millorar:"] + hints[:2], lambda: self.go("stages"), self.stage["bg"])
+        else:
+            self.go("stages")
+
+    # ---- continuar pagant pol·len
+    def accept_continue(self):
+        if self.sv["pollen"] < CONT_COST:
+            self.say("Et falta pol·len per continuar.")
+            return
+        self.sv["pollen"] -= CONT_COST
+        self.continues += 1
+        self.cont_prompt = False
+        self.cat_base.hp = self.cat_base.max * 0.5
+        for e in self.enemies:
+            e.x = min(ENEMY_BASE_X - 30, e.x + 380)       # els enemics retrocedeixen
+            e.stun_t = 1.5
+            e.kb_t = 0.0
+        self.money = float(self.max_money)                # moneder ple per remuntar
+        self.spawn_fx("fx_royal", CAT_BASE_X + 60, GROUND - 20, fps=11)
+        self.banner_say("Torna-ho a provar!", "levelup")
+        self.save()
+
+    def decline_continue(self):
+        self.cont_prompt = False
+        self.finish(False)
 
     def quit_game(self):
         self.quit_req = True
@@ -7041,6 +7414,8 @@ class Game(GameUI):
         for f in self.ui_floats:
             f[1] -= dt
         self.ui_floats = [f for f in self.ui_floats if f[1] > 0]
+        if self.state == "dialogue" and self.dlg and not self.trans:
+            self.dlg["t"] += dt
         if self.state == "intro" and not self.trans:
             self.intro_t += dt
         tr = self.trans
@@ -7068,6 +7443,7 @@ class Game(GameUI):
                     sfx(snd)
 
     def gain_bee(self, key):
+        self.sv["captured"].pop(key, None)
         o = self.sv["owned"]
         if key in o:
             if o[key] >= MAX_LV:
@@ -7336,7 +7712,7 @@ class Game(GameUI):
         self.paused = False
 
     def toggle_pause(self):
-        if self.state == "play":
+        if self.state == "play" and not self.cont_prompt:
             self.paused = not self.paused
 
     def toggle_speed(self):
@@ -7395,8 +7771,11 @@ class Game(GameUI):
         self.phase = 0
         self.boss_t = dict(barrage=14.0, spawn=14.0, guard=45.0)
         self.kills = self.spawned = self.cannons_used = self.mel_earned = 0
+        self.rescued_now = []
         self.abil_cd = [12.0, 20.0]
         self.abil_used = 0
+        self.continues = 0
+        self.cont_prompt = False
         self.t_full = 0.0
         self.air_spawned = 0
         self.shake = self.hitstop = 0.0
@@ -7795,7 +8174,28 @@ class Game(GameUI):
             self.parts.append([x, y, math.cos(a) * s, math.sin(a) * s - 40,
                                random.uniform(0.4, 0.8), random.uniform(3, 6), col])
 
+    def capture_deck(self):
+        """Derrota final: les abelles que han lluitat perden tots els nivells i queden captives."""
+        keys = [d["key"] for d in self.deck]
+        self.captured_now = list(keys)
+        for k in keys:
+            if k in self.sv["owned"]:
+                del self.sv["owned"][k]
+                self.sv["evo"].pop(k, None)
+                self.sv["captured"][k] = 0
+        if not self.sv["owned"]:
+            self.sv["owned"]["honey"] = 1
+            self.sv["captured"].pop("honey", None)
+        self.sv["deck"] = [k for k in self.sv["deck"] if k in self.sv["owned"]] or list(self.sv["owned"])[:3]
+
     def record_stats(self):
+        for k in list(self.sv["captured"]):
+            self.sv["captured"][k] += self.kills
+            if self.sv["captured"][k] >= RESCUE_NEED[BEE_BY_KEY[k]["rarity"]]:
+                self.sv["captured"].pop(k)
+                self.gain_bee(k)
+                self.rescued_now.append(k)
+                self.ui_say("Has rescatat " + BEE_BY_KEY[k]["name"] + "!")
         st = self.sv["stats"]
         st["kills"] += self.kills
         st["spawned"] += self.spawned
@@ -7854,7 +8254,13 @@ class Game(GameUI):
         self.sv["pollen"] += pol
         self.result = dict(win=win, mel=mel, pollen=pol, kills=kills, time=tm, flags=flags, dmg=dmg_list,
                            survival=survival, record=record,
-                           hints=[] if win else self.lose_hint())
+                           hints=[] if win else self.lose_hint(), rescued=list(self.rescued_now))
+        if self.stage.get("boss") and not survival and not self.headless:
+            if not win:
+                self.capture_deck()
+            self.save()
+            self.start_story("win" if win else "lose")
+            return
         self.state = "win" if win else "lose"
         if not self.headless:
             self.trans = dict(t=0.35, dur=0.7, style="drip", color=(214, 170, 60) if win else (80, 40, 40),
@@ -7868,7 +8274,7 @@ class Game(GameUI):
         self.abil_cd = [max(0.0, c - dt) for c in self.abil_cd]
         if self.money >= 0.95 * self.max_money:
             self.t_full += dt
-        tag = "night" if night_amount(self.time) > 0.6 else "day"
+        tag = "night" if (night_amount(self.time) > 0.6 or self.stage.get("night")) else "day"
         if tag != self.daytag:
             self.daytag = tag
             if not self.headless:
@@ -7968,7 +8374,11 @@ class Game(GameUI):
         if self.enemy_base.hp <= 0:
             self.finish(True)
         elif self.cat_base.hp <= 0:
-            self.finish(False)
+            if not self.headless and self.continues < CONT_MAX:
+                self.cont_prompt = True
+                sfx("lose")
+            else:
+                self.finish(False)
 
     # ------------------------------------------------- RUSC, BOTIGA, DIÀRIES
     def hive_lv(self, key):
@@ -8211,6 +8621,8 @@ def run_simulation(argv):
             random.seed(1000 * si + run)
             g = Game(headless=True)
             g.sv["owned"] = {k: lv for k in own}
+            if si >= 17 or "--evo" in argv:
+                g.sv["evo"] = {k: True for k in own}
             g.sv["deck"] = deck
             g.sv["cannon"] = min(MAX_CANNON, 1 + lv // 2)
             g.start(si)
@@ -8305,6 +8717,8 @@ def main():
                         g.toggle_opt("fullscreen")
                     elif g.state in ("intro", "tutorial"):
                         g.story_key(ev.key)
+                    elif g.state == "dialogue" and ev.key == pygame.K_ESCAPE:
+                        g.dlg_skip_all()
                     elif g.state == "capsule_open" and ev.key in (pygame.K_SPACE, pygame.K_RETURN):
                         g.cap_tap()
                     elif g.state == "capsule_multi" and ev.key in (pygame.K_SPACE, pygame.K_RETURN):
@@ -8321,7 +8735,11 @@ def main():
                                 g.go(g.newbee[1])
                             elif g.state not in ("title", "win", "lose"):
                                 g.go("base")
-                    elif g.state == "play" and not g.paused:
+                    elif g.state == "dialogue" and ev.key in (pygame.K_SPACE, pygame.K_RETURN, pygame.K_RIGHT):
+                        g.dlg_advance()
+                    elif g.state == "dialogue" and ev.key == pygame.K_ESCAPE:
+                        g.dlg_skip_all()
+                    elif g.state == "play" and not g.paused and not g.cont_prompt:
                         if ev.key in KEYS:
                             g.spawn_bee(KEYS.index(ev.key))
                         elif ev.key == pygame.K_w:
@@ -8337,7 +8755,10 @@ def main():
                 if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
                     if g.trans:
                         pass
-                    elif g.state == "play" and not g.paused:
+                    elif g.state == "dialogue":
+                        if not g.click(ev.pos):
+                            g.dlg_advance()
+                    elif g.state == "play" and not g.paused and not g.cont_prompt:
                         if g.btn_speed.collidepoint(ev.pos):
                             g.toggle_speed()
                         elif g.btn_pause.collidepoint(ev.pos):
@@ -8367,9 +8788,9 @@ def main():
                                 g.tut_step(1)
                     else:
                         g.click(ev.pos)
-            if g.state == "play" and not g.paused and not g.trans and g.hitstop > 0:
+            if g.state == "play" and not g.paused and not g.trans and not g.cont_prompt and g.hitstop > 0:
                 g.hitstop -= dt
-            elif g.state == "play" and not g.paused and not g.trans:
+            elif g.state == "play" and not g.paused and not g.trans and not g.cont_prompt:
                 acc += dt * g.speed
                 n = 0
                 while acc >= STEP and n < 6 and g.state == "play":
@@ -8382,7 +8803,7 @@ def main():
             if g.quit_req:
                 return
             if g.state == "intro":
-                music_play(INTRO_MUSIC[g.intro_scene()[0]])
+                music_play(g.story_music())
             else:
                 music_play(MUSIC_BY_BG.get(g.stage["bg"], "calm") if g.state in ("play", "win", "lose") else "calm")
             g.draw()
