@@ -1,0 +1,42 @@
+name: Deploy BattleBees to GitHub Pages
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install pygbag pillow pygame-ce
+
+      # Al navegador no es poden generar els sprites ni el so (seria massa lent):
+      # es calculen aquí, al servidor, i s'empaqueten dins del joc.
+      - name: Precompute sprites and sounds
+        env:
+          SDL_VIDEODRIVER: dummy
+          SDL_AUDIODRIVER: dummy
+          BATTLEBEES_DATA: ${{ github.workspace }}/web_assets
+        run: python -c "import main; main.get_sprites(); main.get_audio()"
+
+      - name: Build with Pygbag
+        run: python -m pygbag --build "${{ github.workspace }}/main.py"
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build/web
