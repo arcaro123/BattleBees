@@ -33,8 +33,8 @@ jobs:
         run: python -c "import main; main.WEB=True; main.get_sprites(); main.get_audio()"
         
       - name: Build with Pygbag
-        run: python -m pygbag --build "${{ github.workspace }}/main.py"
-
+        run: python -m pygbag --build --ume_block=0 "${{ github.workspace }}/main.py"
+  
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
