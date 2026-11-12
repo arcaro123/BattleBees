@@ -31,40 +31,15 @@ import pickle
 import random
 import sys
 import zlib
-import asyncio
 
 import pygame
-
-WEB = sys.platform == "emscripten"
-
-# Pillow només és necessari per generar els sprites al PC/CI.
-# Al navegador es carreguen els sprites ja precalculats.
-try:
-    from PIL import Image, ImageDraw  # pip install pillow
-except ImportError:
-    Image = ImageDraw = None
+from PIL import Image, ImageDraw  # pip install pillow
 
 
-def mkfont(size, bold=True):
-    """Carrega una font inclosa al projecte; manté SysFont a l'escriptori."""
-    if WEB:
-        candidates = (
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts", "DejaVuSansMono-Bold.ttf"),
-            os.path.join(os.getcwd(), "fonts", "DejaVuSansMono-Bold.ttf"),
-        )
-        for font_path in candidates:
-            if os.path.isfile(font_path):
-                return pygame.font.Font(font_path, int(size))
-        raise FileNotFoundError("No s'ha trobat fonts/DejaVuSansMono-Bold.ttf")
-    return pygame.font.SysFont(PF, size, bold=bold)
 
 def data_dir():
-    """Carpeta de dades: al navegador, la que ve empaquetada amb el joc."""
-    d = os.environ.get("BATTLEBEES_DATA")
-    if not d and WEB:
-        d = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web_assets")
-    if not d:
-        d = os.path.join(os.path.expanduser("~"), ".bee_battle")
+    """Carpeta d'usuari per al desat i les memòries cau (si no es pot, la de l'script)."""
+    d = os.path.join(os.path.expanduser("~"), ".bee_battle")
     try:
         os.makedirs(d, exist_ok=True)
         return d
@@ -533,7 +508,30 @@ def _mason_tuft(c):
     pp(c, [(8, 46), (18, 44), (18, 54), (8, 53)], (176, 104, 58), fur=0.6, seed=14)
 
 
+def _halo(c, frame):
+    """Abella de la Llum: halo daurat sobre el cap i fibló lluminós."""
+    for k in range(16):
+        a0 = k * math.pi / 8
+        a1 = (k + 1) * math.pi / 8
+        c.line([(71 + 10 * math.cos(a0), 29 + 3.2 * math.sin(a0)), (71 + 10 * math.cos(a1), 29 + 3.2 * math.sin(a1))],
+               (255, 236, 130, 255), 1)
+    c.put(5, 52, (255, 250, 200, 255))
+    c.put(4, 52, (255, 230, 120, 255))
+    for k in range(5):
+        c.put(40 + k * 4, 38 + (k % 2), (255, 244, 180, 255))
+
+
 BEES = {
+    "himalayan": dict(abd=(4, 54, 51, 17), peak=0.56, n_tail=2.0, abd_col=(190, 118, 36), fur_abd=0.5, tufts_abd=1,
+                      bands=[(36, 11, (64, 36, 18)), (14, 12, (64, 36, 18))],
+                      thx=(60, 43, 13, 12), thx_col=(214, 150, 56), fuzz_thx=1, fur_thx=0.85, pollen=(236, 180, 64),
+                      head=(75, 46, 8, 8.5), head_col=(76, 48, 30), scale=1.5, wing_len=36, wing_w=12, tilt=-0.08,
+                      wing_fill=(214, 190, 150, 112), wing_edge=(120, 84, 40, 225), heave=0.05, leg_amp=3.2, leg_w=2),
+    "light": dict(abd=(8, 52, 48, 10), peak=0.64, n_tail=1.6, abd_col=(250, 240, 200), gloss=True,
+                  bands=[(24, 3, (240, 196, 88)), (32, 3, (240, 196, 88)), (40, 3, (240, 196, 88))],
+                  thx=(58, 43, 9.5, 9), thx_col=(255, 228, 140), head=(71, 44, 7, 7.5), head_col=(250, 242, 214),
+                  scale=1.05, extra=_halo, wing_len=38, wing_w=12, wing_fill=(255, 246, 204, 132),
+                  wing_edge=(230, 190, 90, 230), wing_blur=1),
     "honey": dict(abd=(8, 52, 49, 12), peak=0.62, abd_col=(214, 164, 52),
                   bands=[(24, 6, (52, 38, 28)), (34, 6, (52, 38, 28)), (44, 5, (52, 38, 28))],
                   thx=(56, 43, 11, 10), thx_col=(156, 110, 56), fuzz_thx=1, pollen=(222, 182, 62),
@@ -2935,6 +2933,83 @@ def firefly(frame):
 ENEMY_FUNCS.update(dict(cricket=cricket, toad_king=toad_king, rhino=rhino, earthworm=earthworm, firefly=firefly))
 
 
+def royal_spawn(frame):
+    """Cria Reial: larva fosca amb corona daurada i ulls vermells (neix de l'ou de la Vespa Reina)."""
+    im = Image.new("RGBA", (162, 96), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    OUT = (12, 6, 18, 255)
+    ph = (frame % NF) * 2 * math.pi / NF
+    wy = 6 * math.sin(ph * 2)
+    d.ellipse((34, 22 + wy, 78, 36 + wy), fill=(210, 190, 240, 130), outline=(150, 130, 190, 200))
+    d.ellipse((54, 18 - wy, 98, 32 - wy), fill=(210, 190, 240, 130), outline=(150, 130, 190, 200))
+    segs = []
+    for k in range(6):
+        segs.append((24 + k * 16, 62 + 5 * math.sin(ph + k * 0.9) - k * 1.5, 19 - k * 1.4))
+    for (x, y, r) in segs:
+        d.ellipse((x - r, y - r, x + r, y + r), fill=(52, 26, 64, 255), outline=OUT)
+        d.ellipse((x - r * 0.6, y - r * 0.9, x + r * 0.2, y - r * 0.2), fill=(94, 58, 112, 255))
+        d.arc((x - r * 0.8, y - r * 0.3, x + r * 0.8, y + r * 0.9), 20, 160, fill=(214, 170, 50, 255), width=2)
+    hx, hy = segs[-1][0] + 17, segs[-1][1] - 6
+    d.ellipse((hx - 15, hy - 14, hx + 15, hy + 14), fill=(66, 30, 78, 255), outline=OUT)
+    d.ellipse((hx + 2, hy - 8, hx + 10, hy), fill=(255, 40, 40, 255))
+    d.ellipse((hx + 4, hy - 6, hx + 7, hy - 3), fill=(255, 235, 210, 255))
+    d.polygon([(hx + 12, hy + 4), (hx + 27, hy + 8 + 2 * math.sin(ph * 2)), (hx + 13, hy + 11)], fill=(240, 230, 200, 255), outline=OUT)
+    cx_, cy_ = hx - 2, hy - 14
+    d.polygon([(cx_ - 10, cy_ + 2), (cx_ - 10, cy_ - 10), (cx_ - 5, cy_ - 3), (cx_, cy_ - 13), (cx_ + 5, cy_ - 3),
+               (cx_ + 10, cy_ - 10), (cx_ + 10, cy_ + 2)], fill=(250, 206, 70, 255), outline=(60, 40, 8, 255))
+    return im
+
+
+ENEMY_FUNCS["royal_spawn"] = royal_spawn
+
+
+def ghost_wasp(frame):
+    """Vespa Espectral: la vespa, tenyida de lila i semitransparent."""
+    from PIL import ImageOps
+    base = ENEMY_FUNCS["wasp"](frame)
+    gray = ImageOps.grayscale(base.convert("RGB"))
+    col = ImageOps.colorize(gray, black=(24, 10, 52), white=(205, 165, 255)).convert("RGBA")
+    col.putalpha(base.split()[3].point(lambda v: int(v * 0.82)))
+    return col
+
+
+ENEMY_FUNCS["ghost_wasp"] = ghost_wasp
+
+
+def royal_butterfly(frame):
+    """Papallona Reial: ales grans violeta i daurades amb ulls, cos fosc i corona."""
+    im = Image.new("RGBA", (210, 160), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    OUT = (22, 8, 34, 255)
+    ph = (frame % NF) * 2 * math.pi / NF
+    f = 0.38 + 0.62 * abs(math.sin(ph / 2))
+    cx, cy = 105, 84
+    for sgn in (-1, 1):
+        up = [(cx + sgn * 6, cy - 8), (cx + sgn * (34 + 62 * f), cy - 66 * (0.55 + 0.45 * f)), (cx + sgn * (26 + 80 * f), cy - 4)]
+        d.polygon(up + [(cx + sgn * 8, cy + 6)], fill=(150, 46, 206, 255), outline=(240, 200, 70, 255))
+        d.polygon([(cx + sgn * 10, cy - 8), (cx + sgn * (30 + 52 * f), cy - 50 * (0.55 + 0.45 * f)), (cx + sgn * (22 + 66 * f), cy - 6)], fill=(206, 96, 240, 255))
+        ex, ey = cx + sgn * (44 + 36 * f), cy - 26 * (0.6 + 0.4 * f)
+        d.ellipse((ex - 11, ey - 11, ex + 11, ey + 11), fill=(255, 226, 96, 255), outline=OUT)
+        d.ellipse((ex - 5, ey - 5, ex + 5, ey + 5), fill=(60, 20, 90, 255))
+        lw = [(cx + sgn * 8, cy + 4), (cx + sgn * (20 + 60 * f), cy + 14), (cx + sgn * (24 + 50 * f), cy + 58 * (0.7 + 0.3 * f)), (cx + sgn * 8, cy + 34)]
+        d.polygon(lw, fill=(46, 100, 214, 255), outline=(240, 200, 70, 255))
+        d.polygon([(cx + sgn * 10, cy + 10), (cx + sgn * (18 + 44 * f), cy + 18), (cx + sgn * (18 + 36 * f), cy + 44 * (0.7 + 0.3 * f))], fill=(96, 170, 240, 255))
+    d.ellipse((cx - 9, cy - 28, cx + 9, cy + 56), fill=(46, 22, 66, 255), outline=OUT)
+    for k in range(5):
+        d.arc((cx - 9, cy - 20 + k * 14, cx + 9, cy - 6 + k * 14), 10, 170, fill=(214, 170, 50, 255), width=2)
+    d.ellipse((cx - 13, cy - 48, cx + 13, cy - 22), fill=(60, 28, 84, 255), outline=OUT)
+    d.ellipse((cx - 9, cy - 40, cx - 3, cy - 33), fill=(255, 50, 50, 255))
+    d.ellipse((cx + 3, cy - 40, cx + 9, cy - 33), fill=(255, 50, 50, 255))
+    for sgn in (-1, 1):
+        d.line([(cx + sgn * 5, cy - 46), (cx + sgn * 20, cy - 66), (cx + sgn * 28, cy - 62)], fill=(250, 220, 120, 255), width=2)
+    d.polygon([(cx - 11, cy - 46), (cx - 11, cy - 60), (cx - 5, cy - 52), (cx, cy - 64), (cx + 5, cy - 52), (cx + 11, cy - 60), (cx + 11, cy - 46)],
+              fill=(250, 206, 70, 255), outline=(60, 40, 8, 255))
+    return im
+
+
+ENEMY_FUNCS["royal_butterfly"] = royal_butterfly
+
+
 # ============================================================ FONS I TORRES NOUS (v5)
 def brick_shader(ramp, cx, hw, y0, seed=4, bw=14, bh=9):
     def fn(x, y, px, py):
@@ -3364,6 +3439,171 @@ def obelisk():
     return c.result()
 
 
+def _tw_img():
+    im = Image.new("RGBA", (70, 90), (0, 0, 0, 0))
+    return im, ImageDraw.Draw(im)
+
+
+_OL = (22, 14, 12, 255)
+
+
+def tower_stone():
+    """Torre de pedra amb merlets, finestra i porta."""
+    im, d = _tw_img()
+    d.rectangle((14, 84, 56, 89), fill=(96, 92, 86, 255), outline=_OL)
+    d.rectangle((20, 22, 50, 85), fill=(158, 154, 148, 255), outline=_OL)
+    d.rectangle((44, 23, 49, 84), fill=(122, 118, 112, 255))
+    d.rectangle((21, 23, 24, 84), fill=(190, 186, 178, 255))
+    for y in range(28, 85, 7):
+        d.line([(21, y), (49, y)], fill=(112, 108, 102, 255))
+    for k, y in enumerate(range(28, 84, 7)):
+        for x in range(24 + (6 if k % 2 else 0), 48, 12):
+            d.line([(x, y), (x, y + 7)], fill=(112, 108, 102, 255))
+    d.rectangle((18, 20, 52, 25), fill=(140, 136, 130, 255), outline=_OL)
+    for x in (20, 27, 34, 41, 46):
+        d.rectangle((x, 12, x + 5, 20), fill=(170, 166, 160, 255), outline=_OL)
+    d.pieslice((31, 32, 39, 40), 180, 360, fill=(40, 30, 24, 255))
+    d.rectangle((31, 36, 39, 50), fill=(40, 30, 24, 255))
+    d.rectangle((33, 38, 37, 48), fill=(255, 214, 110, 255))
+    d.rectangle((30, 68, 40, 85), fill=(112, 72, 42, 255), outline=_OL)
+    d.pieslice((30, 63, 40, 73), 180, 360, fill=(112, 72, 42, 255), outline=_OL)
+    d.point((38, 77), fill=(240, 200, 80, 255))
+    d.line([(24, 2), (24, 12)], fill=(60, 40, 30, 255))
+    d.polygon([(25, 2), (34, 4), (25, 8)], fill=(204, 52, 52, 255), outline=_OL)
+    return im
+
+
+def tower_crystal():
+    """Agulla de cristalls blaus sobre una roca."""
+    im, d = _tw_img()
+    d.ellipse((8, 22, 62, 84), fill=(120, 200, 255, 46))
+    d.polygon([(10, 89), (60, 89), (56, 78), (46, 74), (24, 74), (14, 78)], fill=(88, 92, 108, 255), outline=_OL)
+    CO = (20, 44, 100, 255)
+    for pts, f1, f2 in (([(10, 82), (12, 62), (16, 56), (19, 82)], (110, 190, 255, 255), (70, 140, 235, 255)),
+                        ([(51, 82), (53, 64), (58, 58), (61, 82)], (110, 190, 255, 255), (70, 140, 235, 255)),
+                        ([(15, 80), (18, 40), (23, 30), (28, 42), (29, 80)], (120, 204, 255, 255), (72, 150, 240, 255)),
+                        ([(41, 80), (43, 44), (49, 34), (54, 46), (56, 80)], (120, 204, 255, 255), (72, 150, 240, 255)),
+                        ([(28, 78), (31, 22), (35, 4), (39, 22), (42, 78)], (140, 214, 255, 255), (80, 156, 244, 255))):
+        d.polygon(pts, fill=f1, outline=CO)
+        top = min(pts, key=lambda p: p[1])
+        d.polygon([top, pts[len(pts) // 2], pts[-2], (top[0], pts[-1][1])], fill=f2)
+        d.line([(top[0] - 1, top[1] + 4), (top[0] - 1, top[1] + 18)], fill=(230, 248, 255, 255))
+    return im
+
+
+def tower_castle():
+    """Castell de cera daurada amb torres i teulades."""
+    im, d = _tw_img()
+    WAX, WAX2 = (240, 196, 72, 255), (206, 152, 36, 255)
+    d.rectangle((22, 28, 48, 87), fill=WAX, outline=_OL)
+    for x in (22, 29, 36, 43):
+        d.rectangle((x, 20, x + 5, 28), fill=WAX, outline=_OL)
+    for ry in range(34, 84, 9):
+        for rx in range(26, 46, 8):
+            ox = 4 if ((ry - 34) // 9) % 2 else 0
+            cx, cy = rx + ox, ry
+            d.polygon([(cx - 3, cy - 2), (cx, cy - 4), (cx + 3, cy - 2), (cx + 3, cy + 2), (cx, cy + 4), (cx - 3, cy + 2)], outline=WAX2)
+    for x0 in (8, 48):
+        d.rectangle((x0, 46, x0 + 14, 87), fill=(226, 178, 60, 255), outline=_OL)
+        d.polygon([(x0 - 2, 46), (x0 + 7, 30), (x0 + 16, 46)], fill=(172, 62, 40, 255), outline=_OL)
+        d.rectangle((x0 + 5, 54, x0 + 9, 62), fill=(60, 36, 20, 255))
+    d.rectangle((30, 66, 40, 87), fill=(120, 72, 40, 255), outline=_OL)
+    d.pieslice((30, 61, 40, 71), 180, 360, fill=(120, 72, 40, 255), outline=_OL)
+    d.line([(15, 30), (15, 20)], fill=(70, 44, 30, 255))
+    d.polygon([(16, 20), (24, 23), (16, 27)], fill=(210, 60, 60, 255), outline=_OL)
+    d.rectangle((28, 40, 32, 48), fill=(60, 36, 20, 255))
+    d.rectangle((38, 40, 42, 48), fill=(60, 36, 20, 255))
+    return im
+
+
+def tower_tree():
+    """Arbre vell buit amb la copa verda i bresques."""
+    im, d = _tw_img()
+    BARK = (112, 78, 46, 255)
+    d.polygon([(18, 89), (52, 89), (46, 74), (44, 58), (42, 36), (28, 36), (26, 58), (24, 74)], fill=BARK, outline=_OL)
+    d.polygon([(40, 38), (44, 58), (46, 74), (52, 89), (42, 89)], fill=(86, 58, 34, 255))
+    for x in (30, 35, 40):
+        d.line([(x, 40), (x - 1, 86)], fill=(88, 60, 36, 255))
+    d.ellipse((30, 62, 40, 85), fill=(34, 20, 14, 255), outline=_OL)
+    d.ellipse((32, 74, 38, 84), fill=(255, 190, 70, 255))
+    GR, GL, GO = (70, 146, 62, 255), (112, 190, 90, 255), (28, 70, 34, 255)
+    for cx, cy, r in ((35, 24, 17), (19, 31, 12), (51, 31, 12), (35, 12, 11), (25, 17, 9), (45, 17, 9)):
+        d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=GR, outline=GO)
+    for cx, cy, r in ((30, 20, 8), (16, 28, 5), (33, 8, 5), (23, 14, 4)):
+        d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=GL)
+    for cx, cy in ((52, 46), (58, 52), (50, 54)):
+        d.polygon([(cx - 3, cy - 2), (cx, cy - 4), (cx + 3, cy - 2), (cx + 3, cy + 2), (cx, cy + 4), (cx - 3, cy + 2)], fill=(240, 176, 50, 255), outline=(150, 96, 20, 255))
+    d.line([(46, 44), (52, 44)], fill=BARK, width=2)
+    return im
+
+
+def tower_mill():
+    """Molí de mel blanc amb aspes i teulat vermell."""
+    im, d = _tw_img()
+    d.polygon([(18, 89), (52, 89), (46, 38), (24, 38)], fill=(238, 228, 204, 255), outline=_OL)
+    d.polygon([(40, 40), (46, 38), (52, 89), (42, 89)], fill=(200, 188, 160, 255))
+    for y in range(46, 86, 10):
+        d.line([(24 + (y - 46) * 0.12, y), (46 + (y - 46) * 0.12, y)], fill=(196, 184, 156, 255))
+    d.polygon([(21, 40), (35, 20), (49, 40)], fill=(178, 70, 50, 255), outline=_OL)
+    d.rectangle((30, 68, 40, 89), fill=(118, 76, 44, 255), outline=_OL)
+    d.pieslice((30, 63, 40, 73), 180, 360, fill=(118, 76, 44, 255), outline=_OL)
+    d.rectangle((32, 50, 38, 58), fill=(255, 214, 110, 255), outline=_OL)
+    for ang in (45, 135, 225, 315):
+        ex, ey = 35 + 25 * math.cos(math.radians(ang)), 30 + 25 * math.sin(math.radians(ang))
+        px, py = -math.sin(math.radians(ang)) * 5, math.cos(math.radians(ang)) * 5
+        d.line([(35, 30), (ex, ey)], fill=(120, 84, 50, 255), width=2)
+        d.polygon([(35 + (ex - 35) * 0.3, 30 + (ey - 30) * 0.3), (ex, ey), (ex + px, ey + py), (35 + (ex - 35) * 0.3 + px, 30 + (ey - 30) * 0.3 + py)],
+                  fill=(244, 236, 214, 255), outline=_OL)
+    d.ellipse((32, 27, 38, 33), fill=(90, 62, 40, 255), outline=_OL)
+    return im
+
+
+def tower_palace():
+    """Palau reial lila amb cúpula d'or i minarets."""
+    im, d = _tw_img()
+    GOLD, GOLD2 = (244, 200, 74, 255), (196, 146, 34, 255)
+    d.rectangle((16, 30, 54, 87), fill=(150, 92, 192, 255), outline=_OL)
+    d.rectangle((46, 31, 53, 86), fill=(118, 68, 160, 255))
+    d.rectangle((16, 30, 54, 34), fill=GOLD, outline=_OL)
+    for x0 in (6, 54):
+        d.rectangle((x0, 42, x0 + 10, 87), fill=(172, 112, 214, 255), outline=_OL)
+        d.polygon([(x0 - 1, 42), (x0 + 5, 30), (x0 + 11, 42)], fill=GOLD, outline=_OL)
+        d.rectangle((x0 + 3, 52, x0 + 7, 60), fill=(255, 226, 130, 255))
+    d.polygon([(24, 30), (22, 20), (27, 11), (35, 5), (43, 11), (48, 20), (46, 30)], fill=GOLD, outline=_OL)
+    d.polygon([(35, 5), (43, 11), (48, 20), (46, 30), (36, 30)], fill=GOLD2)
+    d.line([(35, 0), (35, 6)], fill=GOLD2, width=1)
+    d.ellipse((33, 0, 37, 4), fill=(255, 240, 160, 255))
+    for x in (22, 32, 42):
+        d.pieslice((x, 40, x + 8, 48), 180, 360, fill=(255, 226, 130, 255))
+        d.rectangle((x, 44, x + 8, 56), fill=(255, 226, 130, 255), outline=_OL)
+    d.rectangle((30, 66, 40, 87), fill=GOLD2, outline=_OL)
+    d.pieslice((30, 61, 40, 71), 180, 360, fill=GOLD2, outline=_OL)
+    return im
+
+
+def tower_crypt():
+    """Obelisc fosc amb runes que brillen."""
+    im, d = _tw_img()
+    d.ellipse((8, 14, 62, 86), fill=(190, 70, 255, 40))
+    d.rectangle((12, 84, 58, 89), fill=(50, 48, 58, 255), outline=_OL)
+    d.rectangle((17, 78, 53, 84), fill=(62, 58, 72, 255), outline=_OL)
+    d.polygon([(24, 78), (46, 78), (41, 22), (35, 4), (29, 22)], fill=(40, 34, 52, 255), outline=(14, 10, 20, 255))
+    d.polygon([(35, 4), (41, 22), (46, 78), (35, 78)], fill=(28, 24, 40, 255))
+    for x0, y0, x1, y1 in ((10, 84, 14, 66), (60, 84, 56, 66)):
+        d.polygon([(x0, y0), ((x0 + x1) // 2, y1 - 8), (x1 + (4 if x1 < 30 else -4), y0)], fill=(54, 48, 66, 255), outline=_OL)
+    RU = (214, 90, 255, 255)
+    d.line([(35, 22), (35, 72)], fill=RU)
+    for y in range(28, 72, 9):
+        d.line([(31, y), (39, y + 3)], fill=RU)
+        d.line([(39, y), (31, y + 3)], fill=(255, 130, 140, 255))
+    d.ellipse((33, 10, 37, 14), fill=(255, 120, 150, 255))
+    return im
+
+
+TOWER_FUNCS = {"stone": tower_stone, "crystal": tower_crystal, "castle": tower_castle, "tree": tower_tree,
+               "mill": tower_mill, "palace": tower_palace, "crypt": tower_crypt}
+
+
 def hive_cannon():
     """Trompa de llautó que surt del cim del rusc: bufa núvols de pol·len (dibuix pixel a pixel)."""
     im = Image.new("RGBA", (40, 30), (0, 0, 0, 0))
@@ -3463,6 +3703,8 @@ def build_sprites(progress=None):
                      ("base_icespire", ice_spire), ("base_obelisk", obelisk), ("hive_cannon", hive_cannon)):
         out[name] = up(hard(fn()))
         tick()
+    for sk, fn in TOWER_FUNCS.items():
+        out["base_hive_" + sk] = up(hard(fn()))
     for ph in range(3):
         out["base_queen_%d" % ph] = [up(hard(queen_lair(ph, f))) for f in (0, 2, 3)]
         tick()
@@ -3493,9 +3735,7 @@ def build_sprites(progress=None):
 
 # >>> ART_END
 def _src_hash(start_tag, end_tag):
-    """Hash del tros de codi entre dues etiquetes."""
-    if WEB:
-        return "web"
+    """Hash del tros de codi entre dues etiquetes: la memòria cau s'invalida si canvia el dibuix."""
     try:
         with open(os.path.abspath(__file__), "r", encoding="utf-8") as f:
             txt = f.read()
@@ -3512,23 +3752,10 @@ def _pack(v):
     return (v.mode, v.size, zlib.compress(v.tobytes(), 4))
 
 
-class RawImg:
-    """Contenidor lleuger per passar bytes RGBA a pygame sense Pillow."""
-    def __init__(self, size, data):
-        self.size = tuple(size)
-        self._data = data
-
-    def tobytes(self):
-        return self._data
-
-
 def _unpack(v):
     if isinstance(v, list):
         return [_unpack(x) for x in v]
-    pixels = zlib.decompress(v[2])
-    if Image is None:
-        return RawImg(v[1], pixels)
-    return Image.frombytes(v[0], v[1], pixels)
+    return Image.frombytes(v[0], v[1], zlib.decompress(v[2]))
 
 
 def get_sprites(use_cache=True, progress=None):
@@ -3542,11 +3769,6 @@ def get_sprites(use_cache=True, progress=None):
                 return {k: _unpack(v) for k, v in data["imgs"].items()}
         except Exception:
             pass
-    if WEB and Image is None:
-        raise RuntimeError(
-            "No s'ha trobat web_assets/sprites_cache.bin. "
-            "Cal generar la memòria cau durant GitHub Actions."
-        )
     out = build_sprites(progress)
     if use_cache:
         try:
@@ -3764,6 +3986,7 @@ def get_audio(progress=None):
 #  JOC
 # =====================================================================
 import datetime
+import time as _time
 import json
 import shutil
 
@@ -3801,6 +4024,9 @@ ENEMY_BASE_X = W - 90
 MAX_LV = 15
 DECK_SIZE = 5
 DECK_MAX = 6
+MAIN_STAGES = 24
+INDOOR_BG = {"bg_mine", "bg_cave", "bg_lair"}
+MAX_BEES, MAX_BEES_SURV = 20, 30
 WALLET_MAX = 8
 MAX_CANNON = 8
 CAT_BASE_HP = 3000
@@ -3866,6 +4092,10 @@ BEE_UNITS = [
       "Fràgil, però llança picades a ràfega.", "flurry"),
     B("giant", "Abella gegant de Wallace", "legend", 700, 26.0, 2400, 95, 30, 48, 1.4, 5, 36, 28,
       "Aixafa tot el que troba.", "crush"),
+    B("himalayan", "Abella de l'Himàlaia", "rare", 300, 9.0, 780, 28, 24, 52, 1.2, 4, 28, 26,
+      "La més grossa de les abelles de la mel: aguanta i trepitja.", "stomp"),
+    B("light", "Abella de la Llum", "rare", 420, 9.0, 230, 46, 190, 58, 1.7, 2, 20, 30,
+      "Llança esferes de llum que alenteixen.", "orb", "proj_orb"),
     B("queen", "Abella Reina", "legend", 600, 22.0, 1600, 80, 28, 50, 1.1, 5, 30, 28,
       "El seu pols reial fereix i cura el rusc.", "royal"),
 ]
@@ -3873,7 +4103,8 @@ BEE_BY_KEY = {b["key"]: b for b in BEE_UNITS}
 ROLE_OF = {"honey": "Atacant", "leafcutter": "Atacant", "bumble": "Tanc", "stingless": "Atacant", "guard": "Tanc",
            "carpenter": "Atacant", "sweat": "Atacant", "mason": "Tirador", "orchid": "Control", "cuckoo": "Atacant",
            "bluebanded": "Tirador", "miner": "Control", "woolcarder": "Atacant", "arctic": "Control", "nurse": "Suport",
-           "killer": "Atacant", "giant": "Tanc", "queen": "Suport"}
+           "killer": "Atacant", "giant": "Tanc", "queen": "Suport",
+           "himalayan": "Tanc", "light": "Tirador"}
 ROLE_INFO = {"Tanc": "Els enemics l'ataquen primer", "Atacant": "Molt dany a prop",
              "Tirador": "Ataca de lluny i toca els voladors", "Control": "Alenteix o atordeix",
              "Suport": "Cura les aliades"}
@@ -3886,6 +4117,14 @@ for _b in BEE_UNITS:
 UPG_BASE = {"common": 80, "rare": 160, "legend": 320}
 
 ENEMIES = {
+    "royal_larva": dict(name="Larva Reina", sprite="royal_spawn", scale=1.5, hp=15000, atk=58, range=30, speed=28, atkcd=1.3,
+                        kb=5, r=56, reward=600, hover=0, ranged=False, style="crunch"),
+    "royal_butterfly": dict(name="Papallona Reial", hp=9000, atk=62, range=170, speed=40, atkcd=1.4, kb=5, r=48, reward=700,
+                            hover=70, ranged=True, style="orb", proj="proj_orb"),
+    "ghost_wasp": dict(name="Vespa Espectral", hp=520, atk=34, range=22, speed=118, atkcd=0.8, kb=2, r=19,
+                       reward=44, hover=44, ranged=False, style="venom"),
+    "royal_spawn": dict(name="Cria Reial", hp=3600, atk=46, range=26, speed=34, atkcd=1.3, kb=4, r=40,
+                        reward=320, hover=0, ranged=False, style="crunch"),
     "ant": dict(name="Formiga", hp=70, atk=5, range=18, speed=42, atkcd=1.0, kb=1, r=20,
                 reward=12, hover=0, ranged=False, style="bite"),
     "spider": dict(name="Aranya", hp=45, atk=4, range=85, speed=75, atkcd=1.4, kb=1, r=16,
@@ -3968,116 +4207,151 @@ STAGES = [
          bg="bg_farm", base="base_scarecrow", base_off=6, amb="pollen", clouds=True,
          spawns=[("cricket", 2, 5, 99), ("ant", 4, 7, 99), ("locust", 10, 9, 99), ("earthworm", 18, 20, 6)],
          events=[dict(t=50, units=[("locust", 8)], msg="Plaga de llagostes!")]),
-    dict(name="4. El Desert", diff=4, rec=3, par=240, base_hp=5040, mult=1.35, amult=1.20, cap=11, boss=False,
+    dict(name="4. El Desert", diff=4, rec=3, par=240, base_hp=3187, mult=0.86, amult=1.01, cap=11, boss=False,
          bg="bg_desert", base="base_nest", base_off=24, amb="dust", clouds=True,
          spawns=[("locust", 2, 6, 99), ("wasp", 8, 12, 99), ("scorpion", 25, 18, 99), ("mantis", 40, 22, 99)],
          events=[dict(t=60, units=[("wasp", 4)], msg="Atac de vespes!")]),
-    dict(name="5. La Platja", diff=5, rec=4, par=200, base_hp=7701, mult=1.54, amult=1.19, cap=11, boss=False,
+    dict(name="5. La Platja", diff=5, rec=4, par=200, base_hp=5175, mult=1.04, amult=1.02, cap=11, boss=False,
          bg="bg_beach", base="base_sandcastle", base_off=10, amb="pollen", clouds=True,
          spawns=[("crab", 4, 9, 99), ("mosquito", 6, 8, 99), ("dragonfly", 20, 12, 99)],
          events=[dict(t=50, units=[("mosquito", 7)], msg="Eixam de mosquits!"),
                  dict(t=100, units=[("crab_king", 1)], msg="ALERTA: Cranc Rei!")]),
-    dict(name="6. La Selva", diff=6, rec=5, par=420, base_hp=19496, mult=3.46, amult=1.73, cap=12, boss=False,
+    dict(name="6. La Selva", diff=6, rec=5, par=420, base_hp=11790, mult=2.09, amult=1.43, cap=12, boss=False,
          bg="bg_jungle", base="base_tiki", base_off=6, amb="fireflies", clouds=False,
          spawns=[("frog", 5, 10, 99), ("mosquito", 4, 8, 99), ("mantis", 22, 18, 99)],
          events=[dict(t=70, units=[("mosquito", 8)], msg="Eixam de mosquits!"),
                  dict(t=110, units=[("toad_king", 1)], msg="ALERTA: Gripau Rei!")]),
-    dict(name="7. El Pantà", diff=7, rec=6, par=380, base_hp=19288, mult=3.17, amult=1.74, cap=12, boss=False,
+    dict(name="7. El Pantà", diff=7, rec=6, par=380, base_hp=12198, mult=2.01, amult=1.46, cap=12, boss=False,
          bg="bg_swamp", base="base_swamp", base_off=20, amb="fireflies", clouds=False,
          spawns=[("frog", 6, 11, 99), ("dragonfly", 10, 9, 99), ("mosquito", 4, 8, 99), ("centipede", 30, 24, 99)],
          events=[dict(t=60, units=[("dragonfly", 6)], msg="Eixam de libèl·lules!"),
                  dict(t=110, units=[("frog", 4)], msg="Les granotes salten!")]),
-    dict(name="8. Les Mines Abandonades", diff=8, rec=7, par=360, base_hp=19760, mult=2.92, amult=1.78, cap=12, boss=False,
+    dict(name="8. Les Mines Abandonades", diff=8, rec=7, par=360, base_hp=12162, mult=1.79, amult=1.50, cap=12, boss=False,
          cat_hp=3500, bg="bg_mine", base="base_mine", base_off=6, amb="dust", clouds=False,
          hazard=dict(kind="rock", every=12, count=1, dmg=160),
          spawns=[("earthworm", 6, 14, 99), ("termite", 3, 5, 99), ("bat", 10, 9, 99)],
          events=[dict(t=80, units=[("rhino", 1)], msg="ALERTA: Rinoceront!")]),
-    dict(name="9. La Cova de Cristalls", diff=9, rec=8, par=300, base_hp=16366, mult=2.27, amult=1.40, cap=12, boss=False,
+    dict(name="9. La Cova de Cristalls", diff=9, rec=8, par=300, base_hp=10996, mult=1.52, amult=1.20, cap=12, boss=False,
          cat_hp=3500, bg="bg_cave", base="base_crystal", base_off=14, amb="spores", clouds=False,
          hazard=dict(kind="rock", every=12, count=1, dmg=170),
          spawns=[("bat", 4, 8, 99), ("widow", 8, 12, 99), ("centipede", 20, 18, 99)],
          events=[dict(t=70, units=[("scorpion_king", 1)], msg="ALERTA: Escorpí Rei!"),
                  dict(t=130, units=[("bat", 6)], msg="Surten els ratpenats!")]),
-    dict(name="10. La Muntanya Nevada", diff=10, rec=9, par=340, base_hp=20645, mult=2.44, amult=1.47, cap=12, boss=False,
+    dict(name="10. La Muntanya Nevada", diff=10, rec=9, par=340, base_hp=14688, mult=1.73, amult=1.29, cap=12, boss=False,
          cat_hp=3500, bg="bg_snow", base="base_igloo", base_off=10, amb="snow", clouds=False,
          hazard=dict(kind="ice", every=10, count=1, dmg=160),
          spawns=[("moth", 5, 10, 99), ("frostbeetle", 12, 15, 99), ("bat", 20, 12, 99), ("stag", 35, 26, 99)],
          events=[dict(t=80, units=[("stag", 2)], msg="Cérvols volants!")]),
-    dict(name="11. El Volcà", diff=11, rec=10, par=340, base_hp=18368, mult=2.21, amult=1.42, cap=13, boss=False,
+    dict(name="11. El Volcà", diff=11, rec=10, par=340, base_hp=14520, mult=1.75, amult=1.30, cap=13, boss=False,
          cat_hp=3500, bg="bg_volcano", base="base_volcano", base_off=10, amb="embers", clouds=False,
          hazard=dict(kind="lava", every=9, count=2, dmg=190),
          spawns=[("fireant", 3, 5, 99), ("scorpion", 15, 16, 99), ("stag", 30, 28, 99), ("hornet", 40, 34, 99)],
          events=[dict(t=60, units=[("fireant", 8)], msg="Horda de formigues de foc!"),
                  dict(t=120, units=[("hornet", 2)], msg="Vespes asiàtiques!")]),
-    dict(name="12. El Cementiri", diff=12, rec=11, par=380, base_hp=46906, mult=4.48, amult=2.05, cap=13, boss=False,
+    dict(name="12. El Cementiri", diff=12, rec=11, par=380, base_hp=37080, mult=3.54, amult=1.87, cap=13, boss=False,
          cat_hp=4500, bg="bg_graveyard", base="base_crypt", base_off=8, amb="fireflies", clouds=False,
          hazard=dict(kind="rock", every=11, count=1, dmg=190),
          spawns=[("firefly", 4, 8, 99), ("widow", 8, 12, 99), ("bat", 14, 10, 99), ("moth", 24, 14, 99)],
          events=[dict(t=60, units=[("firefly", 8)], msg="Eixam de lluernes!"),
                  dict(t=120, units=[("widow", 4)], msg="Surten les vídues!")]),
-    dict(name="13. La Tempesta", diff=13, rec=12, par=420, base_hp=61271, mult=5.39, amult=2.19, cap=13, boss=False,
+    dict(name="13. La Tempesta", diff=13, rec=12, par=420, base_hp=48435, mult=4.26, amult=2.00, cap=13, boss=False,
          cat_hp=4500, bg="bg_storm", base="base_tower", base_off=6, amb="rain", clouds=False,
          hazard=dict(kind="lightning", every=8, count=2, dmg=200),
          spawns=[("dragonfly", 4, 7, 99), ("wasp", 8, 10, 99), ("moth", 20, 14, 99)],
          events=[dict(t=55, units=[("swallow", 1)], msg="ALERTA: Oreneta!"),
                  dict(t=110, units=[("swallow", 2)], msg="Dues orenetes!")]),
-    dict(name="14. Les Ruïnes Antigues", diff=14, rec=13, par=480, base_hp=43936, mult=4.92, amult=2.16, cap=13, boss=False,
+    dict(name="14. Les Ruïnes Antigues", diff=14, rec=13, par=480, base_hp=26569, mult=2.98, amult=1.79, cap=13, boss=False,
          cat_hp=4500, bg="bg_ruins", base="base_ruins", base_off=8, amb="dust", clouds=False,
          hazard=dict(kind="rock", every=10, count=2, dmg=190),
          spawns=[("widow", 4, 8, 99), ("mantis", 14, 16, 99), ("termite", 3, 5, 99)],
          events=[dict(t=60, units=[("tarantula", 1)], msg="ALERTA: Taràntula gegant!"),
                  dict(t=140, units=[("tarantula", 2)], msg="Dues taràntules!")]),
-    dict(name="15. La Glacera Boreal", diff=15, rec=14, par=380, base_hp=51534, mult=3.64, amult=1.88, cap=13, boss=False,
+    dict(name="15. La Glacera Boreal", diff=15, rec=14, par=380, base_hp=40738, mult=2.88, amult=1.72, cap=13, boss=False,
          cat_hp=4500, bg="bg_glacier", base="base_icespire", base_off=6, amb="snow", clouds=False,
          hazard=dict(kind="ice", every=9, count=2, dmg=190),
          spawns=[("frostbeetle", 5, 12, 99), ("moth", 10, 10, 99), ("stag", 30, 24, 99)],
          events=[dict(t=60, units=[("swallow", 1)], msg="ALERTA: Oreneta!"),
                  dict(t=120, units=[("swallow", 2)], msg="Dues orenetes!")]),
-    dict(name="16. La Planura de Cendres", diff=16, rec=14, par=440, base_hp=34934, mult=3.54, amult=1.93, cap=13, boss=False,
+    dict(name="16. La Planura de Cendres", diff=16, rec=14, par=440, base_hp=24854, mult=2.52, amult=1.69, cap=13, boss=False,
          cat_hp=5000, bg="bg_ash", base="base_obelisk", base_off=6, amb="embers", clouds=False,
          hazard=dict(kind="lava", every=8, count=2, dmg=210),
          spawns=[("fireant", 3, 4, 99), ("scorpion", 14, 14, 99), ("hornet", 30, 26, 99)],
          events=[dict(t=70, units=[("scorpion_king", 1)], msg="ALERTA: Escorpí Rei!"),
                  dict(t=140, units=[("scorpion_king", 1), ("fireant", 8)], msg="El Rei i la seva horda!")]),
-    dict(name="17. El Bosc Maleït", diff=17, rec=15, par=460, base_hp=35926, mult=3.71, amult=2.06, cap=13, boss=False,
+    dict(name="17. El Bosc Maleït", diff=17, rec=15, par=460, base_hp=22719, mult=2.34, amult=1.73, cap=13, boss=False,
          cat_hp=5000, bg="bg_forest", base="base_cursed", base_off=8, amb="spores", clouds=False,
          hazard=dict(kind="lightning", every=9, count=2, dmg=220),
          spawns=[("bat", 4, 8, 99), ("widow", 8, 12, 99), ("hornet", 30, 28, 99)],
          events=[dict(t=70, units=[("mantis_king", 1)], msg="ALERTA: Mantis Rei!"),
                  dict(t=140, units=[("mantis_king", 1), ("hornet", 2)], msg="El Rei no ve sol!")]),
-    dict(name="18. La Platja a la Nit", diff=18, rec=15, par=440, base_hp=56430, mult=5.80, amult=2.55, cap=13, boss=False,
+    dict(name="18. La Platja a la Nit", diff=18, rec=15, par=440, base_hp=44608, mult=4.58, amult=2.33, cap=13, boss=False,
          cat_hp=5000, bg="bg_beach", base="base_sandcastle", base_off=10, amb="sparkle", clouds=False, night=True,
          spawns=[("crab", 4, 8, 99), ("mosquito", 6, 7, 99), ("dragonfly", 14, 10, 99)],
          events=[dict(t=75, units=[("crab_king", 1)], msg="ALERTA: Cranc Rei!")]),
-    dict(name="19. El Camp en Flames", diff=19, rec=15, par=450, base_hp=71340, mult=7.31, amult=2.86, cap=13, boss=False,
+    dict(name="19. El Camp en Flames", diff=19, rec=15, par=450, base_hp=56394, mult=5.78, amult=2.61, cap=13, boss=False,
          cat_hp=5000, bg="bg_farm", base="base_scarecrow", base_off=6, amb="embers", clouds=False,
          hazard=dict(kind="lava", every=8, count=2, dmg=215),
          spawns=[("fireant", 3, 4, 99), ("locust", 8, 7, 99), ("cricket", 12, 7, 99)],
          events=[dict(t=80, units=[("rhino", 1)], msg="ALERTA: Rinoceront!")]),
-    dict(name="20. La Selva Tempestuosa", diff=20, rec=15, par=460, base_hp=54560, mult=6.98, amult=2.87, cap=13, boss=False,
+    dict(name="20. La Selva Tempestuosa", diff=20, rec=15, par=460, base_hp=36660, mult=4.69, amult=2.46, cap=13, boss=False,
          cat_hp=5000, bg="bg_jungle", base="base_tiki", base_off=6, amb="fireflies", clouds=False,
          hazard=dict(kind="lightning", every=8, count=2, dmg=225),
          spawns=[("frog", 5, 9, 99), ("mantis", 14, 14, 99), ("firefly", 10, 9, 99)],
          events=[dict(t=80, units=[("toad_king", 1)], msg="ALERTA: Gripau Rei!")]),
-    dict(name="21. El Pantà Embruixat", diff=21, rec=15, par=470, base_hp=49438, mult=6.73, amult=2.90, cap=13, boss=False,
+    dict(name="21. El Pantà Embruixat", diff=21, rec=15, par=470, base_hp=44942, mult=6.12, amult=2.81, cap=13, boss=False,
          cat_hp=5500, bg="bg_swamp", base="base_swamp", base_off=20, amb="fireflies", clouds=False, night=True,
          spawns=[("widow", 5, 9, 99), ("frog", 8, 10, 99), ("centipede", 25, 20, 99)],
          events=[dict(t=90, units=[("tarantula", 1)], msg="ALERTA: Taràntula gegant!")]),
-    dict(name="22. Les Mines Profundes", diff=22, rec=15, par=480, base_hp=105000, mult=10.70, amult=3.57, cap=13, boss=False,
+    dict(name="22. Les Mines Profundes", diff=22, rec=15, par=480, base_hp=56442, mult=5.75, amult=2.82, cap=13, boss=False,
          cat_hp=5500, bg="bg_mine", base="base_mine", base_off=6, amb="dust", clouds=False,
          hazard=dict(kind="rock", every=9, count=2, dmg=215),
          spawns=[("bat", 4, 8, 99), ("scorpion", 12, 13, 99), ("termite", 3, 5, 99)],
          events=[dict(t=80, units=[("scorpion_king", 1)], msg="ALERTA: Escorpí Rei!"),
                  dict(t=150, units=[("scorpion_king", 1), ("termite", 8)], msg="El Rei i el seu eixam!")]),
-    dict(name="23. El Cim Gelat", diff=23, rec=15, par=490, base_hp=45900, mult=4.59, amult=2.49, cap=13, boss=False,
+    dict(name="23. El Cim Gelat", diff=23, rec=15, par=490, base_hp=36720, mult=3.68, amult=2.30, cap=13, boss=False,
          cat_hp=6000, bg="bg_glacier", base="base_icespire", base_off=6, amb="snow", clouds=False,
          hazard=dict(kind="ice", every=8, count=2, dmg=215),
          spawns=[("frostbeetle", 5, 10, 99), ("moth", 10, 9, 99), ("stag", 28, 22, 99)],
          events=[dict(t=70, units=[("swallow", 1)], msg="ALERTA: Oreneta!"), dict(t=130, units=[("swallow", 2)], msg="Dues orenetes!")]),
-    dict(name="24. EL NIU DE LA VESPA REINA", diff=24, rec=15, par=420, base_hp=26988, mult=2.43, amult=1.65, cap=10,
+    dict(name="24. EL NIU DE LA VESPA REINA", diff=24, rec=15, par=420, base_hp=105303, mult=9.48, amult=3.26, cap=10,
          boss=True, cat_hp=6000, bg="bg_lair", base="base_queen_0", base_off=0, amb="dust", clouds=False,
          spawns=[("wasp", 6, 13, 99), ("stag", 16, 26, 99), ("hornet", 35, 30, 99), ("hornet_guard", 70, 55, 99)],
          events=[]),
+    dict(name="25. La Colònia Obscura", diff=25, rec=15, par=500, base_hp=84000, mult=10.80, amult=3.92, cap=13, boss=False,
+         cat_hp=6500, bg="bg_cave", base="base_crystal", base_off=14, amb="spores", clouds=False,
+         hazard=dict(kind="rock", every=9, count=2, dmg=230),
+         spawns=[("ghost_wasp", 4, 7, 99), ("bat", 6, 9, 99), ("widow", 12, 12, 99)],
+         events=[dict(t=70, units=[("royal_spawn", 1)], msg="ALERTA: Cria Reial!")]),
+    dict(name="26. El Cementiri Espectral", diff=26, rec=15, par=500, base_hp=72481, mult=9.22, amult=3.79, cap=13, boss=False,
+         cat_hp=6500, bg="bg_graveyard", base="base_crypt", base_off=8, amb="fireflies", clouds=False, night=True,
+         hazard=dict(kind="lightning", every=8, count=2, dmg=235),
+         spawns=[("ghost_wasp", 4, 6, 99), ("firefly", 8, 9, 99), ("moth", 14, 11, 99)],
+         events=[dict(t=80, units=[("royal_spawn", 1)], msg="ALERTA: Cria Reial!"),
+                 dict(t=150, units=[("royal_spawn", 2)], msg="Dues cries reials!")]),
+    dict(name="27. La Selva Reial", diff=27, rec=15, par=520, base_hp=118080, mult=14.88, amult=4.68, cap=13, boss=False,
+         cat_hp=7000, bg="bg_jungle", base="base_tiki", base_off=6, amb="fireflies", clouds=False,
+         hazard=dict(kind="lightning", every=8, count=2, dmg=240),
+         spawns=[("frog", 5, 9, 99), ("mantis", 12, 13, 99), ("ghost_wasp", 8, 8, 99)],
+         events=[dict(t=90, units=[("royal_spawn", 2)], msg="Dues cries reials!")]),
+    dict(name="28. Les Cavernes Fosques", diff=28, rec=15, par=520, base_hp=82368, mult=10.30, amult=4.20, cap=13, boss=False,
+         cat_hp=7000, bg="bg_mine", base="base_mine", base_off=6, amb="dust", clouds=False,
+         hazard=dict(kind="rock", every=8, count=2, dmg=240),
+         spawns=[("centipede", 6, 14, 99), ("scorpion", 10, 12, 99), ("ghost_wasp", 5, 7, 99)],
+         events=[dict(t=70, units=[("royal_spawn", 1)], msg="ALERTA: Cria Reial!"),
+                 dict(t=150, units=[("royal_spawn", 2)], msg="Dues cries reials!")]),
+    dict(name="29. El Volcà de la Cria", diff=29, rec=15, par=540, base_hp=58036, mult=7.20, amult=3.84, cap=13, boss=False,
+         cat_hp=7500, bg="bg_volcano", base="base_volcano", base_off=10, amb="embers", clouds=False,
+         hazard=dict(kind="lava", every=7, count=2, dmg=245),
+         spawns=[("fireant", 3, 4, 99), ("hornet", 25, 24, 99), ("ghost_wasp", 6, 7, 99)],
+         events=[dict(t=80, units=[("royal_spawn", 1)], msg="ALERTA: Cria Reial!"),
+                 dict(t=160, units=[("royal_spawn", 2)], msg="Dues cries reials!")]),
+    dict(name="30. EL TRON DE LA CRIA REIAL", diff=30, rec=15, par=560, base_hp=51115, mult=5.88, amult=4.00, cap=14, boss=False, finale=True,
+         cat_hp=8000, bg="bg_ash", base="base_obelisk", base_off=6, amb="embers", clouds=False, night=True,
+         hazard=dict(kind="lava", every=7, count=3, dmg=250),
+         spawns=[("ghost_wasp", 4, 6, 99), ("hornet_guard", 20, 26, 99)],
+         events=[dict(t=60, units=[("royal_spawn", 1)], msg="Les cries reials arriben!"),
+                 dict(t=120, units=[("royal_spawn", 2)], msg="Dues cries reials!"),
+                 dict(t=170, units=[("royal_larva", 1)], msg="LA LARVA REINA!")]),
 ]
 STAGE_REWARD = [(390, 3),
                 (585, 3),
@@ -4102,7 +4376,13 @@ STAGE_REWARD = [(390, 3),
                 (20000, 48),
                 (21500, 52),
                 (23000, 56),
-                (30000, 80)]
+                (30000, 80),
+                (32000, 90),
+                (34000, 95),
+                (36000, 100),
+                (38000, 105),
+                (40000, 110),
+                (50000, 150)]
 # música per tipus de fons
 MUSIC_BY_BG = {"bg_meadow": "calm", "bg_farm": "calm", "bg_beach": "calm", "bg_jungle": "calm", "bg_desert": "calm",
                "bg_snow": "calm", "bg_forest": "tense", "bg_swamp": "tense", "bg_mine": "tense", "bg_cave": "tense",
@@ -4122,7 +4402,7 @@ MISSIONS = [
     dict(id="clear9", text="Supera el nivell 9", kind="stage", val=9, bee="nurse", pollen=11),
     dict(id="clear10", text="Supera el nivell 10", kind="stage", val=10, bee="arctic", pollen=12),
     dict(id="clear11", text="Supera el nivell 11", kind="stage", val=11, bee="cuckoo", pollen=13),
-    dict(id="clear12", text="Supera el nivell 12", kind="stage", val=12, pollen=14),
+    dict(id="clear12", text="Supera el nivell 12", kind="stage", val=12, pollen=14, skin="stone"),
     dict(id="clear13", text="Supera el nivell 13", kind="stage", val=13, bee="bluebanded", pollen=15),
     dict(id="clear14", text="Supera el nivell 14", kind="stage", val=14, bee="miner", pollen=16),
     dict(id="clear15", text="Supera el nivell 15", kind="stage", val=15, bee="woolcarder", pollen=17),
@@ -4130,11 +4410,17 @@ MISSIONS = [
     dict(id="clear17", text="Supera el nivell 17", kind="stage", val=17, pollen=19),
     dict(id="clear18", text="Supera el nivell 18", kind="stage", val=18, pollen=20),
     dict(id="clear19", text="Supera el nivell 19", kind="stage", val=19, pollen=22),
-    dict(id="clear20", text="Supera el nivell 20", kind="stage", val=20, pollen=24),
+    dict(id="clear20", text="Supera el nivell 20", kind="stage", val=20, pollen=24, bee="himalayan"),
     dict(id="clear21", text="Supera el nivell 21", kind="stage", val=21, pollen=26),
     dict(id="clear22", text="Supera el nivell 22", kind="stage", val=22, pollen=28),
     dict(id="clear23", text="Supera el nivell 23", kind="stage", val=23, pollen=30),
     dict(id="clear24", text="Derrota la Vespa Reina", kind="stage", val=24, bee="queen", pollen=40),
+    dict(id="clear25", text="Supera el nivell 25", kind="stage", val=25, pollen=45),
+    dict(id="clear26", text="Supera el nivell 26", kind="stage", val=26, pollen=50),
+    dict(id="clear27", text="Supera el nivell 27", kind="stage", val=27, pollen=55, bee="light"),
+    dict(id="clear28", text="Supera el nivell 28", kind="stage", val=28, pollen=60),
+    dict(id="clear29", text="Supera el nivell 29", kind="stage", val=29, pollen=65),
+    dict(id="clear30", text="Derrota el Tron de la Cria Reial", kind="stage", val=30, pollen=90, skin="crypt"),
     dict(id="kills50", text="Derrota 50 enemics", kind="stat", stat="kills", val=50, mel=300),
     dict(id="kills300", text="Derrota 300 enemics", kind="stat", stat="kills", val=300, pollen=5),
     dict(id="kills1000", text="Derrota 1000 enemics", kind="stat", stat="kills", val=1000, mel=1500),
@@ -4153,17 +4439,28 @@ MISSIONS = [
 MISSIONS += [
     dict(id="seen10", text="Descobreix 10 enemics", kind="calc", calc="seen", val=10, pollen=4),
     dict(id="seen20", text="Descobreix 20 enemics", kind="calc", calc="seen", val=20, pollen=8),
-    dict(id="seen32", text="Completa el bestiari", kind="calc", calc="seen", val=32, pollen=15),
+    dict(id="seen32", text="Completa el bestiari", kind="calc", calc="seen", val=36, pollen=15),
     dict(id="own6", text="Tingues 6 abelles", kind="calc", calc="owned", val=6, mel=800),
     dict(id="own12", text="Tingues 12 abelles", kind="calc", calc="owned", val=12, pollen=8),
-    dict(id="own18", text="Completa la col·lecció d'abelles", kind="calc", calc="owned", val=18, pollen=20),
+    dict(id="own20", text="Completa la col·lecció d'abelles", kind="calc", calc="owned", val=20, pollen=20),
     dict(id="evo1", text="Evoluciona una abella", kind="calc", calc="evo", val=1, pollen=6),
     dict(id="evo3", text="Evoluciona 3 abelles", kind="calc", calc="evo", val=3, pollen=12),
     dict(id="surv180", text="Aguanta 3 minuts en supervivència", kind="calc", calc="surv", val=180, pollen=6),
     dict(id="surv420", text="Aguanta 7 minuts en supervivència", kind="calc", calc="surv", val=420, pollen=14),
+    dict(id="tame1", text="Domestica un enemic", kind="calc", calc="tamed", val=1, pollen=15),
+    dict(id="tame3", text="Domestica 3 enemics", kind="calc", calc="tamed", val=3, pollen=30),
+    dict(id="tame6", text="Domestica 6 enemics", kind="calc", calc="tamed", val=6, pollen=60),
+    dict(id="mut1", text="Muta una abella", kind="calc", calc="mut", val=1, pollen=10),
+    dict(id="mut3", text="Muta 3 abelles", kind="calc", calc="mut", val=3, pollen=20),
+    dict(id="royal10", text="Derrota 10 Cries Reials", kind="stat", stat="royal_kills", val=10, pollen=20),
+    dict(id="royal50", text="Derrota 50 Cries Reials", kind="stat", stat="royal_kills", val=50, pollen=45),
+    dict(id="resc1", text="Rescata una abella", kind="stat", stat="rescued", val=1, pollen=8),
+    dict(id="resc5", text="Rescata 5 abelles", kind="stat", stat="rescued", val=5, pollen=25),
+    dict(id="surv900", text="Aguanta 15 minuts en supervivència", kind="calc", calc="surv", val=900, pollen=20, skin="crystal"),
+    dict(id="surv1200", text="Aguanta 20 minuts en supervivència", kind="calc", calc="surv", val=1200, pollen=40),
     dict(id="stars18", text="Aconsegueix 18 estrelles", kind="calc", calc="stars", val=18, pollen=6),
     dict(id="stars40", text="Aconsegueix 40 estrelles", kind="calc", calc="stars", val=40, pollen=12),
-    dict(id="stars72", text="Totes les estrelles!", kind="calc", calc="stars", val=72, pollen=30),
+    dict(id="stars90", text="Totes les estrelles!", kind="calc", calc="stars", val=90, pollen=40),
 ]
 WEEKLY_POOL = [
     dict(id="w_wins", stat="wins", val=8, text="Guanya 8 nivells", pollen=10),
@@ -4177,9 +4474,68 @@ WEEKLY_BY_ID = {m["id"]: m for m in WEEKLY_POOL}
 EVENTS = [dict(id="mel", name="Setmana de la mel", desc="+25% de mel en acabar un nivell"),
           dict(id="pollen", name="Setmana del pol·len", desc="+1 pol·len en guanyar un nivell"),
           dict(id="swarm", name="Setmana de l'eixam", desc="Abelles amb -10% de recàrrega")]
+SKINS = [("classic", "Rusc clàssic", "Per defecte", "Sense avantatge"),
+         ("stone", "Torre de pedra", "Missió: supera el nivell 12", "+15% de vida del rusc"),
+         ("crystal", "Agulla de cristall", "Missió: aguanta 15 min a Supervivència", "-10% de recàrrega de la trompa"),
+         ("castle", "Castell de cera", "Esdeveniment: Hora feliç", "+10% de diners per enemic"),
+         ("tree", "Arbre vell", "Esdeveniment: Cap de setmana d'ambre", "El rusc es cura sol (+0,04%/s)"),
+         ("mill", "Molí de mel", "Esdeveniment: Abelles potenciades", "+8% d'ingressos"),
+         ("palace", "Palau reial", "Esdeveniment: setmanal", "-6% de recàrrega de les abelles"),
+         ("crypt", "Cripta fosca", "Missió: derrota el Tron de la Cria Reial", "+6% d'atac de les abelles")]
+SKIN_NAME = {k: n for k, n, _h, _a in SKINS}
+OLD_SKINS = {"ruby": "stone", "ice": "crystal", "gold": "castle", "forest": "tree", "night": "mill", "royal": "palace", "shadow": "crypt"}
+EVENT_GOALS = {"spot": ("Guanya 3 nivells amb una abella potenciada a l'equip", 3, "mill"),
+               "happy": ("Guanya un nivell durant l'hora feliç", 1, "castle"),
+               "weekend": ("Obre 3 càpsules durant el cap de setmana", 3, "tree"),
+               "week": ("Guanya 5 nivells aquesta setmana", 5, "palace")}
 EVO_MEL, EVO_POLLEN, EVO_MULT = 3000, 15, 1.35
+MUTATIONS = {"fer": dict(name="Ferotge", desc="+25% d'atac", atk=1.25),
+             "cui": dict(name="Cuirassa", desc="+30% de vida", hp=1.3),
+             "vel": dict(name="Veloç", desc="+20% de velocitat i -10% de recàrrega", speed=1.2, cd=0.9)}
+MUT_MEL, MUT_POLLEN = 2500, 15
+LOYALTY_MAX, FEED_ESS = 5, 10
 FRAG_COST = {"common": 10, "rare": 25, "legend": 60}
 FRAG_GAIN = {"common": 1, "rare": 2, "legend": 4}
+
+
+def news_events(now=None):
+    """Esdeveniments per temps limitat: abelles potenciades, hora feliç, cap de setmana i esdeveniment setmanal."""
+    now = now or datetime.datetime.now()
+    out = []
+    period = now.date().toordinal() // 3
+    rnd = random.Random("spot%d" % period)
+    end = datetime.datetime.combine(datetime.date.fromordinal((period + 1) * 3), datetime.time(0))
+    out.append(dict(id="spot", title="Abelles potenciades", desc="Aquestes 3 abelles tenen +25% de vida i atac",
+                    bees=[b["key"] for b in rnd.sample(BEE_UNITS, 3)], active=True, secs=(end - now).total_seconds()))
+    st = datetime.datetime.combine(now.date(), datetime.time(18))
+    en = datetime.datetime.combine(now.date(), datetime.time(22))
+    if st <= now < en:
+        out.append(dict(id="happy", title="Hora feliç", desc="+40% de mel en acabar un nivell (de 18 a 22 h)", active=True,
+                        secs=(en - now).total_seconds()))
+    else:
+        nxt = st if now < st else st + datetime.timedelta(days=1)
+        out.append(dict(id="happy", title="Hora feliç", desc="+40% de mel en acabar un nivell (de 18 a 22 h)", active=False,
+                        secs=(nxt - now).total_seconds()))
+    mon = datetime.datetime.combine(now.date() + datetime.timedelta(days=7 - now.weekday()), datetime.time(0))
+    if now.weekday() >= 5:
+        out.append(dict(id="weekend", title="Cap de setmana d'ambre", desc="Les abelles repetides donen el doble de fragments",
+                        active=True, secs=(mon - now).total_seconds()))
+    else:
+        sat = datetime.datetime.combine(now.date() + datetime.timedelta(days=5 - now.weekday()), datetime.time(0))
+        out.append(dict(id="weekend", title="Cap de setmana d'ambre", desc="Les abelles repetides donen el doble de fragments",
+                        active=False, secs=(sat - now).total_seconds()))
+    ev = current_event()
+    out.append(dict(id="week", title=ev["name"], desc=ev["desc"], active=True, secs=(mon - now).total_seconds()))
+    return out
+
+
+def fmt_secs(s_):
+    s_ = int(max(0, s_))
+    if s_ >= 86400:
+        return "%dd %dh" % (s_ // 86400, (s_ % 86400) // 3600)
+    if s_ >= 3600:
+        return "%dh %02dm" % (s_ // 3600, (s_ % 3600) // 60)
+    return "%dm %02ds" % (s_ // 60, s_ % 60)
 
 
 def current_event():
@@ -4208,11 +4564,11 @@ HIVE_UPG = [
     dict(id="wallet", name="Cartera gran", desc="+10% de diners màxims", base=255, per=0.10),
     dict(id="cdr", name="Reina diligent", desc="-3% de recàrrega de les abelles", base=305, per=0.03),
     dict(id="cannon_dmg", name="Trompa potent", desc="+12% de dany de la trompa", base=340, per=0.12),
-    dict(id="cannon_cd", name="Trompa ràpida", desc="-4% de recàrrega de la trompa", base=355, per=0.04),
+    dict(id="cannon_cd", name="Trompa ràpida", desc="-3% de recàrrega de la trompa", base=355, per=0.04),
     dict(id="reward", name="Mel de victòria", desc="+5% de mel en acabar", base=425, per=0.05),
-    dict(id="regen", name="Reparació", desc="El rusc es cura sol (0,15%/s)", base=595, per=0.0015),
-    dict(id="swarm", name="Eixam (Q)", desc="+1 abella/2 nivells, -2,5 s recàrrega", base=290, per=0.0),
-    dict(id="heal", name="Cura (E)", desc="+2,5% de cura i -3,5 s de recàrrega", base=300, per=0.0),
+    dict(id="regen", name="Reparació", desc="El rusc es cura sol (0,02%/s)", base=595, per=0.0015),
+    dict(id="swarm", name="Eixam (Q)", desc="Més abelles i -2,5 s de recàrrega", base=290, per=0.0),
+    dict(id="heal", name="Cura (E)", desc="+1,5% de cura i -2 s de recàrrega", base=300, per=0.0),
 ]
 HIVE_BY_ID = {u["id"]: u for u in HIVE_UPG}
 
@@ -4244,7 +4600,7 @@ TRANS = {"stages": ("hex", (214, 170, 70)), "upgrade": ("wipe_r", (200, 140, 50)
          "capsules": ("iris", (200, 130, 40)), "bestiary": ("fade", (120, 84, 38)), "missions": ("hex", (190, 140, 56)),
          "shop": ("wipe_r", (214, 160, 60)), "hive": ("hex", (214, 170, 70)), "stats": ("wipe_l", (190, 140, 56)),
          "options": ("fade", (110, 80, 40)), "base": ("fade", (60, 44, 24)), "title": ("fade", (40, 30, 16)),
-         "intro": ("fade", (20, 14, 8)), "win": ("drip", (214, 170, 60)), "lose": ("drip", (80, 40, 40)), "dialogue": ("fade", (30, 24, 14)), "tutorial": ("hex", (214, 170, 70)), "help": ("fade", (60, 44, 24))}
+         "intro": ("fade", (20, 14, 8)), "skins": ("hex", (214, 170, 70)), "tame": ("hex", (214, 170, 70)), "news": ("fade", (190, 140, 56)), "rescue": ("hex", (170, 110, 200)), "win": ("drip", (214, 170, 60)), "lose": ("drip", (80, 40, 40)), "dialogue": ("fade", (30, 24, 14)), "tutorial": ("hex", (214, 170, 70)), "help": ("fade", (60, 44, 24))}
 
 TIPS = [
     ("Supera nivells per", "desbloquejar abelles", "noves a Missions!"),
@@ -4257,6 +4613,31 @@ TIPS = [
     ("Compra millores del", "rusc: més vida,", "diners i trompa!"),
     ("Cada dia: regal gratis", "i tres missions", "diàries noves."),
 ]
+STAR_TEXT = {"time": "En menys de {par} s", "hp50": "Amb el rusc a més del 60% de vida", "few": "Generant com a màxim {n} abelles",
+             "nocannon": "Sense disparar la trompa", "noabil": "Sense usar l'Eixam ni la Cura", "nowallet": "Sense millorar el moneder",
+             "lost": "Perdent com a màxim 15 abelles", "roles": "Amb 3 rols diferents a l'equip",
+             "commons": "Sense abelles llegendàries a l'equip"}
+STAR_POOL2 = ("time", "hp50", "few")
+STAR_POOL3 = ("nocannon", "noabil", "nowallet", "lost", "roles", "commons")
+STAR_POOL3_EASY = ("nocannon", "noabil", "nowallet", "lost")
+
+
+def few_limit(i):
+    return 24 + (i // 3) * 2
+
+
+def stage_star_conds(i):
+    """Condicions de la 2a i la 3a estrella: van canviant d'un nivell a l'altre (sempre iguals per a un nivell concret)."""
+    c2 = STAR_POOL2[(i + i // 3) % len(STAR_POOL2)]
+    pool3 = STAR_POOL3_EASY if i < 4 else STAR_POOL3
+    c3 = pool3[(i * 2 + i // 4) % len(pool3)]
+    return [c2, c3]
+
+
+def star_text(i, cond):
+    return STAR_TEXT[cond].format(par=STAGES[i]["par"], n=few_limit(i))
+
+
 PROTA = "Flor"
 CONT_COST, CONT_MAX = 30, 2
 LEVEL_DIALOGUES = {
@@ -4269,6 +4650,9 @@ LEVEL_DIALOGUES = {
     15: ["Ja som a prop! Evoluciona les teves abelles de nivell 15 al Taller."],
     17: ["Aquests territoris són més perillosos. Les millores del Rusc seran clau."],
     20: ["Això és molt dur... Recorda que l'Eixam (Q) i la Cura (E) ens poden salvar."],
+    24: ["Hi ha un nou perill: la Cria Reial ha deixat una colònia a les cavernes. Aquí hi ha vespes espectrals!"],
+    29: ["Aquest és el Tron de la Cria Reial. Porta tot el que tinguis, guardiana!",
+         "Noto una energia terrible aquí dins... no entris amb el rusc desprotegit."],
     23: ["Aquest és el niu de la Vespa Reina... Si perdem, el seu poder esborrarà la llum de les abelles que lluitin.",
          "Si caiem, podem pagar 30 de pol·len per continuar. Tu pots, guardiana!"],
 }
@@ -4278,39 +4662,50 @@ INTRO_SCENES = [
     (6.0, "La Reina Melissa, mare de totes les abelles, vetllava pel rusc des del seu tron daurat.", dict()),
     (7.0, "Però un dia un núvol negre va tapar el sol... i un brogit de ales va omplir el cel.", dict(snd="roar")),
     (7.0, "Era la Vespa Reina, cruel i golafre. Va jurar quedar-se tota la mel del món.", dict(snd="boom")),
-    (7.0, f"Els seus exèrcits van arrasar boscos, deserts, platges, mines i volcans. Fins a {len(STAGES)} territoris van caure!",
+    (7.0, f"Els seus exèrcits van arrasar boscos, deserts, platges, mines i volcans. Fins a {MAIN_STAGES} territoris van caure!",
      dict(snd="warn")),
     (7.0, "El Gran Rusc va resistir fins a l'última gota de mel... però la Reina Melissa va quedar ferida.", dict(snd="lose")),
     (8.0, "Abans de caure, va confiar la seva llum a una jove abella: tu.", dict(snd="levelup")),
     (7.0, "Amb la llum de la Reina, abelles de totes les castes van tornar a l'alba per defensar la seva llar.", dict(snd="reveal")),
-    (8.0, f"El camí té {len(STAGES)} territoris. Millora les abelles, reuneix l'eixam i derrota la Vespa Reina al seu niu. Estàs a punt?",
+    (8.0, f"El camí té {MAIN_STAGES} territoris. Millora les abelles, reuneix l'eixam i derrota la Vespa Reina al seu niu. Estàs a punt?",
      dict(snd="ability")),
     (4.0, "", dict(snd="win")),
 ]
 WIN_SCENES = [
     (6.0, "La Vespa Reina va deixar anar un últim udol... i el seu niu es va enfonsar entre flaixos de llum.", dict(snd="boom")),
-    (6.0, f"El cel es va aclarir. Els {len(STAGES)} territoris van ser alliberats i tots els ruscs van tornar a zumzejar d'alegria.", dict(snd="win")),
+    (6.0, f"El cel es va aclarir. Els {MAIN_STAGES} territoris van ser alliberats i tots els ruscs van tornar a zumzejar d'alegria.", dict(snd="win")),
     (7.0, "La Reina Melissa es va recuperar i va coronar la Flor com a Guardiana del Gran Rusc.", dict(snd="levelup")),
-    (7.0, "El Prat de Flors va tornar a florir... però la mel sempre atrau perills. Aquesta història continua.", dict(snd="reveal")),
+    (7.0, "El Prat de Flors va tornar a florir... però de les cendres del niu va esclatar un ou negre. Una nova amenaça acabava de néixer.", dict(snd="reveal")),
     (4.0, "", dict(snd="win")),
 ]
 LOSE_SCENES = [
     (6.0, "La Vespa Reina va riure mentre el Gran Rusc s'enfonsava en la foscor.", dict(snd="lose")),
     (8.0, "El seu poder va esborrar la llum de les abelles que van lluitar: van perdre tots els nivells i van quedar captives.", dict(snd="roar")),
-    (8.0, "Però la Flor no es va rendir. Per rescatar-les hauràs de derrotar enemics: cada abella necessita el seu nombre. Mira la pestanya Rescat de Missions.", dict(snd="levelup")),
+    (8.0, "Però la Flor no es va rendir. Per rescatar-les hauràs de derrotar enemics: cada abella necessita el seu nombre. Mira el botó Rescat del menú.", dict(snd="levelup")),
+]
+FINALE_SCENES = [
+    (7.0, "La papallona va batre les ales una última vegada... i es va desfer en mil llums.", dict(snd="boom")),
+    (6.0, "Amb ella va caure el niu de la Cria Reial. L'última ombra de la Vespa Reina havia desaparegut.", dict(snd="roar")),
+    (7.0, "La Flor va alçar la mirada: el cel brillava com mai, i la mel tornava a fluir per tots els prats.", dict(snd="win")),
+    (7.0, "Però enmig de les cendres, una petita llavor negra va començar a bategar... La història continua.", dict(snd="warn")),
+    (4.0, "", dict(snd="win")),
 ]
 RESCUE_NEED = {"common": 120, "rare": 220, "legend": 400}
 INTRO_TOTAL = sum(sc[0] for sc in INTRO_SCENES)
 INTRO_MUSIC = ("calm", "calm", "tense", "tense", "tense", "tense", "epic", "epic", "epic", "calm")
 TUT_CARDS = [
-    ("Genera abelles", ["Les abelles surten del teu rusc, a l'esquerra, i", "avancen soles cap al niu enemic.", "Prem 1-6 o clica un botó per generar-ne.", "Cada abella costa diners i triga a recarregar-se."]),
-    ("Diners i moneder", ["Els diners pugen sols i també en derrotar enemics.", "Prem W per millorar el moneder: més ingressos,", "menys recàrrega de les abelles i més botí."]),
-    ("La trompa de pol·len", ["Quan estigui carregada, prem ESPAI.", "El rusc bufa un gran núvol de pol·len que", "fereix tots els enemics i els fa retrocedir."]),
-    ("Habilitats", ["Q: l'Eixam crida abelles gratis.", "E: la Cura sana les abelles i el rusc.", "Tenen una recàrrega llarga: usa-les bé.", "Les pots millorar al Rusc."]),
-    ("Rols i voladors", ["Tanc, Atacant, Tirador, Control i Suport.", "Amb 3 rols diferents guanyes +8% de vida.", "Els voladors només els fereixen del tot", "les tiradores i les antiaèries."]),
-    ("I després?", ["Guanya nivells per aconseguir abelles i pol·len.", "Millora-les al Taller, evoluciona-les al nivell 15,", "compra al Rusc i a la Botiga, obre càpsules", "i fes missions. Bona sort, guardiana!"]),
+    ("Genera abelles", ["Les abelles surten del teu rusc i avancen soles", "cap al niu enemic.", "Prem 1-6 o clica un botó per generar-ne.", "Cada abella costa diners i triga a recarregar-se.", "Màxim 20 abelles alhora (30 a Supervivència)."], "clica un botó de la dreta"),
+    ("Diners i moneder", ["Els diners pugen sols i en derrotar enemics.", "Prem W per millorar el moneder: més ingressos,", "menys recàrrega de les abelles i més botí."], "millora el moneder"),
+    ("La trompa de pol·len", ["Quan estigui carregada, prem ESPAI.", "El rusc bufa un núvol de pol·len que empeny", "els enemics molt enrere i els atordeix.", "No fa mal a la torre enemiga."], "dispara la trompa"),
+    ("Habilitats", ["Q: l'Eixam crida abelles gratis. Al Rusc pots", "triar quina abella surt: com més forta, menys.", "E: la Cura sana abelles i rusc.", "Les dues es poden millorar al Rusc."], "prova l'Eixam o la Cura"),
+    ("Rols i voladors", ["Tanc, Atacant, Tirador, Control i Suport.", "Amb 3 rols diferents guanyes +8% de vida.", "Els voladors només els fereixen del tot", "les tiradores i les antiaèries."], "respon la pregunta"),
+    ("Notícies, esdeveniments i skins", ["Al menú hi ha el botó de Notícies: hi trobaràs", "esdeveniments per temps limitat (abelles", "potenciades, hora feliç, cap de setmana...).", "Completa'ls per aconseguir skins del rusc."], "obre les notícies"),
+    ("Rescat i La Cau", ["Si perds contra la Vespa Reina, les abelles que", "lluiten queden captives: al Rescat n'has de", "triar una i derrotar enemics per alliberar-la.", "La Cau (després de la Reina) domestica enemics."], "tria l'abella a rescatar"),
+    ("Mutacions", ["Les abelles evolucionades poden mutar:", "Ferotge, Cuirassa o Veloç. Es pot canviar", "pagant mel i pol·len cada vegada."], "escull una mutació"),
+    ("Pluja, tempestes i boira", ["A l'exterior pot canviar el temps durant la", "batalla: la pluja alenteix un bàndol, la", "tempesta porta llamps i la boira redueix", "l'abast. A les coves i al niu de la Reina no."], "fes ploure"),
+    ("I després?", ["Guanya nivells per aconseguir abelles i pol·len.", "Millora, evoluciona i muta les abelles; compra", "al Rusc i a la Botiga; obre càpsules; fes missions", "i derrota la Vespa Reina. Bona sort, guardiana!"], ""),
 ]
-KEYS = [pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, pygame.K_5, pygame.K_6]
+KEYS = [pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, pygame.K_5, pygame.K_6, pygame.K_7]
 
 
 DAY_LEN = 480.0
@@ -4347,6 +4742,9 @@ def bestiary_order():
         for k in stage_enemy_ids(s):
             if k not in order:
                 order.append(k)
+    for _k in ("royal_spawn", "royal_larva", "royal_butterfly"):
+        if _k not in order:
+            order.append(_k)
     return order
 
 
@@ -4366,7 +4764,7 @@ def default_save():
                            dmg=0, by_bee={}),
                 stars={}, seen=[], pity={"0": 0, "1": 0}, daily="", streak=0, tutorial_done=False,
                 hive={}, items={"money": 0, "hp": 0, "cannon": 0}, armed={"money": False, "hp": False, "cannon": False},
-                slot6=False, captured={}, dlg_seen=[], intro_done=False, tut_done=False, surv_best=0.0, surv_kills=0, evo={}, frag=0, presets=[[], [], []],
+                slot6=False, skin="classic", skins=["classic"], ev_prog={}, ev_claimed=[], swarm_key=None, ess={}, tamed={}, tame_job=None, wild=None, mut={}, rescue_target=None, captured={}, dlg_seen=[], intro_done=False, tut_done=False, surv_best=0.0, surv_kills=0, evo={}, frag=0, presets=[[], [], []],
                 wk={"week": "", "ids": [], "claimed": [], "prog": {}},
                 shop={"slot": "", "day": "", "bee_bought": False, "lvl_bought": False, "mel": {}},
                 dm={"date": "", "ids": [], "claimed": [], "prog": {}}, opts=default_opts())
@@ -4381,21 +4779,12 @@ def load_save():
     d = default_save()
     raw = None
     legacy = os.path.join(os.path.dirname(os.path.abspath(__file__)), "savegame_bees_v5.json")
-    if WEB:
+    for p in (save_path(), save_path() + ".bak", legacy):
         try:
-            import platform
-            saved = platform.window.localStorage.getItem("battlebees_save")
-            if saved:
-                raw = json.loads(str(saved))
+            raw = _read_json(p)
+            break
         except Exception:
             raw = None
-    if not isinstance(raw, dict):
-        for p in (save_path(), save_path() + ".bak", legacy):
-            try:
-                raw = _read_json(p)
-                break
-            except Exception:
-                raw = None
     if isinstance(raw, dict):
         for k in d:
             if k in raw:
@@ -4419,6 +4808,18 @@ def load_save():
             d["presets"] = [[], [], []]
         if not isinstance(d.get("evo"), dict):
             d["evo"] = {}
+        if not isinstance(d.get("skins"), list) or "classic" not in d["skins"]:
+            d["skins"] = ["classic"] + [x for x in d.get("skins", []) if x != "classic"] if isinstance(d.get("skins"), list) else ["classic"]
+        for _k in ("ev_prog",):
+            if not isinstance(d.get(_k), dict):
+                d[_k] = {}
+        if not isinstance(d.get("ev_claimed"), list):
+            d["ev_claimed"] = []
+        for _k in ("ess", "tamed"):
+            if not isinstance(d.get(_k), dict):
+                d[_k] = {}
+        if not isinstance(d.get("mut"), dict):
+            d["mut"] = {}
         if not isinstance(d.get("captured"), dict):
             d["captured"] = {}
         if not isinstance(d.get("dlg_seen"), list):
@@ -4430,6 +4831,9 @@ def load_save():
             d["progress"] = 17
         if "17" in d["stars"]:
             d["stars"]["23"] = d["stars"].pop("17")
+    d["skins"] = list(dict.fromkeys(OLD_SKINS.get(x, x) for x in d.get("skins", ["classic"])))
+    _sk = OLD_SKINS.get(d.get("skin"), d.get("skin"))
+    d["skin"] = _sk if _sk in d["skins"] else "classic"
     d["ver"] = SAVE_VERSION
     d["owned"] = {k: min(MAX_LV, int(v)) for k, v in d["owned"].items() if k in BEE_BY_KEY}
     d["deck"] = [k for k in d["deck"] if k in d["owned"]][:(DECK_MAX if d.get("slot6") else DECK_SIZE)]
@@ -4439,13 +4843,6 @@ def load_save():
 
 
 def write_save(sv):
-    if WEB:
-        try:
-            import platform
-            platform.window.localStorage.setItem("battlebees_save", json.dumps(sv))
-        except Exception:
-            pass
-        return
     path = save_path()
     tmp = path + ".tmp"
     try:
@@ -4465,11 +4862,11 @@ def write_save(sv):
 def make_fonts(big=False):
     global FONT, FONT_S, FONT_M, FONT_B, FONT_T
     d = 2 if big else 0
-    FONT = mkfont(17 + d)
-    FONT_S = mkfont(13 + d)
-    FONT_M = mkfont(24 + d)
-    FONT_B = mkfont(40)
-    FONT_T = mkfont(78)
+    FONT = pygame.font.SysFont(PF, 17 + d, bold=True)
+    FONT_S = pygame.font.SysFont(PF, 13 + d, bold=True)
+    FONT_M = pygame.font.SysFont(PF, 24 + d, bold=True)
+    FONT_B = pygame.font.SysFont(PF, 40, bold=True)
+    FONT_T = pygame.font.SysFont(PF, 78, bold=True)
 
 
 def surf(im):
@@ -4769,7 +5166,7 @@ class Base:
 
 
 SEQ = (0, 1, 2, 1)
-LUNGE_AMP = {"dash": 30, "slam": 3, "ram": 16, "stomp": 4, "royal": 6}
+LUNGE_AMP = {"crush": 22, "dash": 30, "slam": 3, "ram": 16, "stomp": 4, "royal": 6}
 
 
 def anim_img(lst, anim, rate=10, phase=0.0):
@@ -4820,7 +5217,10 @@ class Unit:
         self.moving = False
         self.last_img = None
         self.last_c = (0, 0)
+        self.last_fr = -1
         self.key = ("ally_" + d["key"]) if side == 0 else ("enemy_" + d.get("sprite", d["id"]))
+        if side == 0 and str(d["key"]).startswith("wild_"):
+            self.key = "tamed_" + d.get("sprite", d["id"])
 
     def knock(self):
         self.kb_t = 0.35
@@ -4859,11 +5259,12 @@ class Unit:
             return
         self.cd -= dt
         foes = g.enemies if self.side == 0 else g.cats
+        rng = self.d["range"] * (g.weather_range() if self.d["range"] > 60 else 1.0)
         target, best = None, 1e9
         tank_t, tank_best = None, 1e9
         for f in foes:
             dist = abs(f.x - self.x) - f.r - self.r
-            if dist <= self.d["range"]:
+            if dist <= rng:
                 if dist < best:
                     best, target = dist, f
                 if f.d.get("tank") and dist < tank_best:
@@ -4871,7 +5272,7 @@ class Unit:
         if tank_t is not None and self.side == 1:
             target = tank_t
         base = g.enemy_base if self.side == 0 else g.cat_base
-        base_in_range = abs(base.x - self.x) - base.r - self.r <= self.d["range"]
+        base_in_range = abs(base.x - self.x) - base.r - self.r <= rng
         if target or base_in_range:
             if self.cd <= 0:
                 self.cd = self.d["atkcd"]
@@ -4881,7 +5282,7 @@ class Unit:
             self.moving = False
         else:
             self.moving = True
-            self.x += self.dir * self.d["speed"] * dt * (0.55 if self.slow_t > 0 else 1.0)
+            self.x += self.dir * self.d["speed"] * dt * (0.55 if self.slow_t > 0 else 1.0) * g.weather_speed(self.side)
 
     def draw(self, g):
         frames = IMG[self.key]
@@ -4913,10 +5314,31 @@ class Unit:
             for i in (3, 2, 1):
                 gh = variant(self.key, fr, "ghost")
                 screen.blit(gh, gh.get_rect(midbottom=(x - self.dir * i * 12, yb)))
+        scl = self.d.get("scale")
+        if scl:
+            kq0 = ("scl", self.key, fr, int(scl * 10))
+            if kq0 not in _VAR:
+                _VAR[kq0] = pygame.transform.smoothscale(img, (int(img.get_width() * scl), int(img.get_height() * scl)))
+            img = _VAR[kq0]
+        if self.side == 0 and self.d.get("key") == "giant":
+            st_ = math.sin(g.anim * rate * math.pi * 2 / NF + self.phase)
+            sq = 1.0 + (0.05 * st_ if self.moving else 0.02 * math.sin(g.anim * 3))
+            if self.lunge > 0:
+                sq = 1.0 + 0.10 * math.sin(math.pi * (1 - self.lunge / self.lunge_len))
+            q = int(round(sq * 50))
+            kq = ("sq", self.key, fr, q)
+            if kq not in _VAR:
+                sqv = q / 50.0
+                _VAR[kq] = pygame.transform.smoothscale(img, (max(1, int(img.get_width() / sqv)), max(1, int(img.get_height() * sqv))))
+            img = _VAR[kq]
+            if self.moving and fr != self.last_fr and fr in (0, NF // 2) and self.kb_t <= 0:
+                g.puff(x - 6, self.y, (196, 178, 140), 6)
+                g.add_shake(0.05)
+            self.last_fr = fr
         rect = img.get_rect(midbottom=(x, yb))
         screen.blit(img, rect)
         self.last_img, self.last_c = img, rect.center
-        if self.hit_t > 0:
+        if self.hit_t > 0 and not self.d.get("scale"):
             screen.blit(variant(self.key, fr, "hit"), rect)
         if self.hp < self.max:
             bar(x, rect.top - 9, 34, 5, self.hp / self.max, C_GREEN if self.side == 0 else C_RED)
@@ -4970,6 +5392,35 @@ def draw_gift(cx, cy, s, col=(214, 90, 70)):
     pygame.draw.circle(screen, (240, 210, 90), (cx - s * 0.2, cy - s * 0.6), int(s * 0.2), 2)
     pygame.draw.circle(screen, (240, 210, 90), (cx + s * 0.2, cy - s * 0.6), int(s * 0.2), 2)
     pygame.draw.rect(screen, C_BORDER, (cx - s * 0.7, cy - s * 0.15, s * 1.4, s * 0.85), 1)
+
+
+def draw_news(cx, cy, s):
+    pygame.draw.rect(screen, (236, 226, 196), (cx - s * 0.8, cy - s * 0.6, s * 1.6, s * 1.2))
+    pygame.draw.rect(screen, C_BORDER, (cx - s * 0.8, cy - s * 0.6, s * 1.6, s * 1.2), 2)
+    pygame.draw.rect(screen, (150, 70, 60), (cx - s * 0.6, cy - s * 0.4, s * 0.5, s * 0.4))
+    for k in range(3):
+        pygame.draw.line(screen, (90, 84, 76), (cx - s * 0.0, cy - s * 0.4 + k * s * 0.25), (cx + s * 0.6, cy - s * 0.4 + k * s * 0.25), 2)
+    pygame.draw.line(screen, (90, 84, 76), (cx - s * 0.6, cy + s * 0.3), (cx + s * 0.6, cy + s * 0.3), 2)
+
+
+def draw_house(cx, cy, s):
+    pygame.draw.polygon(screen, (190, 70, 56), [(cx - s * 0.9, cy - s * 0.05), (cx, cy - s * 0.8), (cx + s * 0.9, cy - s * 0.05)])
+    pygame.draw.rect(screen, (236, 206, 140), (cx - s * 0.65, cy - s * 0.05, s * 1.3, s * 0.8))
+    pygame.draw.rect(screen, C_BORDER, (cx - s * 0.65, cy - s * 0.05, s * 1.3, s * 0.8), 2)
+    pygame.draw.rect(screen, (120, 70, 40), (cx - s * 0.18, cy + s * 0.25, s * 0.36, s * 0.5))
+
+
+def draw_cage(cx, cy, s):
+    pygame.draw.rect(screen, (80, 66, 96), (cx - s * 0.8, cy - s * 0.7, s * 1.6, s * 1.4), 3)
+    for k in range(-2, 3):
+        pygame.draw.line(screen, (80, 66, 96), (cx + k * s * 0.35, cy - s * 0.7), (cx + k * s * 0.35, cy + s * 0.7), 3)
+    pygame.draw.circle(screen, (170, 90, 220), (int(cx), int(cy)), int(s * 0.28))
+
+
+def draw_paw(cx, cy, s):
+    pygame.draw.ellipse(screen, (60, 40, 30), (cx - s * 0.5, cy - s * 0.1, s * 1.0, s * 0.8))
+    for dx, dy in ((-0.75, -0.2), (-0.28, -0.7), (0.28, -0.7), (0.75, -0.2)):
+        pygame.draw.circle(screen, (60, 40, 30), (int(cx + dx * s), int(cy + dy * s)), int(s * 0.25))
 
 
 def draw_bag(cx, cy, s):
@@ -5231,15 +5682,64 @@ class GameUI:
         return cur
 
     # =================================================== BATALLA
+    def draw_boss(self):
+        frames = IMG["base_queen_%d" % self.phase]
+        img = frames[SEQ[int(self.anim * 5) % 4] % len(frames)]
+        pulse = 1.0 + 0.025 * math.sin(self.anim * 3.0) + (0.012 * math.sin(self.anim * 17) if self.phase >= 1 else 0.0)
+        q = int(round(pulse * 100))
+        key = (self.phase, id(img), q)
+        sc = self.boss_cache.get(key)
+        if sc is None:
+            sc = pygame.transform.smoothscale(img, (max(1, int(img.get_width() * q / 100)), max(1, int(img.get_height() * q / 100))))
+            if len(self.boss_cache) > 80:
+                self.boss_cache.clear()
+            self.boss_cache[key] = sc
+        shk = 0.0
+        if any(m["kind"] == "sting" for m in self.haz):
+            shk += random.uniform(-3, 3)                      # s'enfurisma abans de picar
+        if self.phase >= 2:
+            shk += random.uniform(-2, 2)
+        cx = W - 420 + 24 + img.get_width() // 2
+        cy = 6 + img.get_height() // 2 + math.sin(self.anim * 2) * 4
+        pl = 0.5 + 0.5 * math.sin(self.anim * 3)
+        self._glow(cx, cy, 230, (255, 60, 40) if self.phase >= 1 else (255, 170, 60), 24 + 20 * pl + 14 * self.phase)
+        rect = sc.get_rect(center=(cx + shk, cy))
+        screen.blit(sc, rect)
+        flap = abs(math.sin(self.anim * (22 + 6 * self.phase)))
+        for sgn in (-1, 1):
+            wing = pygame.Surface((130, 70), pygame.SRCALPHA)
+            pygame.draw.ellipse(wing, (235, 225, 255, 72), (0, 0, 130, int(22 + 40 * flap)))
+            screen.blit(wing, (int(rect.centerx + sgn * 46 - 65), int(rect.y + rect.h * 0.12)))
+        for k in range(10 + 6 * self.phase):
+            x_, y_, ph_, sp_ = self.amb[k % len(self.amb)]
+            py = (rect.bottom - ((self.anim * 50 * sp_ + y_) % (rect.h * 0.9)))
+            fade = max(0.0, min(1.0, (py - rect.y) / 120.0))
+            pygame.draw.rect(screen, (int(255 * fade), int(90 * fade), int(40 * fade)),
+                             (int(rect.x + 20 + (x_ * 0.3 + 14 * math.sin(self.anim + ph_)) % max(1, rect.w - 40)), int(py), 3, 3))
+
     def draw_bases(self):
         b = self.cat_base
-        img = IMG["base_hive"]
+        img = self.hive_img()
         hx, hy = b.x - img.get_width() // 2, GROUND + 28 - img.get_height()
-        screen.blit(img, (hx, hy))
+        if self.expl and self.expl["t"] > 0.45:                    # el rusc rebenta en bocins
+            et_ = self.expl["t"] - 0.45
+            for k in range(18):
+                ang = -math.pi * (0.1 + 0.8 * ((k * 37) % 100) / 100.0)
+                spd = 160 + (k * 53) % 300
+                px = b.x + math.cos(ang) * spd * et_
+                py = GROUND - 30 + math.sin(ang) * spd * et_ + 520 * et_ * et_
+                pygame.draw.polygon(screen, (196, 150, 80) if k % 2 else (120, 80, 40),
+                                    [(px, py), (px + 16, py + 6), (px + 6, py + 16)])
+            return_early = True
+        else:
+            return_early = False
+        if not return_early:
+            screen.blit(img, (hx, hy))
         # canó del rusc (retrocedeix quan dispara)
         k = max(0.0, self.kick) / 0.4
         rec = int(12 * math.sin(k * math.pi / 2)) if k > 0 else 0
-        screen.blit(IMG["hive_cannon"], (hx + 46 - rec // 3, hy - 38 + rec // 2))
+        if not return_early:
+            screen.blit(IMG["hive_cannon"], (hx + 46 - rec // 3, hy - 38 + rec // 2))
         mx, my = self.muzzle()
         if self.cannon >= self.cannon_time and self.kick <= 0:
             pl = 0.5 + 0.5 * math.sin(self.anim * 8)
@@ -5257,9 +5757,7 @@ class GameUI:
             txt("SUPERVIVÈNCIA  %d:%02d" % (tm // 60, tm % 60), e.x - 20, GROUND + self.stage["base_off"] - img.get_height() - 30,
                 FONT, (250, 200, 130), center=True)
         elif self.stage["boss"]:
-            frames = IMG["base_queen_%d" % self.phase]
-            img = frames[SEQ[int(self.anim * 5) % 4] % len(frames)]
-            screen.blit(img, (W - 420 + 24, 6 + math.sin(self.anim * 2) * 3))
+            self.draw_boss()
             bar(W // 2, 14, 460, 14, e.hp / e.max, C_RED)
             for fr_ in (0.33, 0.66):
                 pygame.draw.rect(screen, (0, 0, 0), (W // 2 - 230 + 460 * fr_, 12, 2, 18))
@@ -5291,6 +5789,8 @@ class GameUI:
         txt(f"{int(self.money)} / {int(self.max_money)}", 50, 8, FONT_M, C_GOLD)
         txt(f"+{self.income:.0f}/s", 50 + FONT_M.size(f"{int(self.money)} / {int(self.max_money)}")[0] + 12, 12, FONT_S, (176, 214, 150))
         txt(self.stage["name"], W - 12 - FONT.size(self.stage["name"])[0], 10, FONT)
+        full_ = len(self.cats) >= self.bee_cap()
+        txt("Abelles: %d/%d" % (len(self.cats), self.bee_cap()), 262, 45, FONT_S, (250, 120, 100) if full_ else (176, 214, 150))
         # velocitat i pausa
         for r, label in ((self.btn_speed, "x2" if self.speed == 2 else "x1"), (self.btn_pause, "II")):
             button(r, C_BTN)
@@ -5330,6 +5830,22 @@ class GameUI:
                 txt(str(int(self.cds[i]) + 1), r.centerx, r.y + 36, FONT_M, (250, 240, 210), center=True)
             if hov:
                 tip = (d, r)
+        wd = self.wild
+        if wd:
+            r = self.btn_wild
+            can = self.wild_cd <= 0 and self.money >= wd["cost"]
+            button(r, (150, 110, 190) if can else C_BTN_OFF)
+            sp = wd.get("sprite", wd["id"])
+            frames_ = IMG.get("tamed_" + sp) or IMG["enemy_" + sp]
+            ic = fit(frames_[0], 72, 44)
+            screen.blit(ic, ic.get_rect(center=(r.centerx, r.y + 32)))
+            txt("[7]", r.x + 5, r.y + 3, FONT_S, C_DARK, shadow=False)
+            txt(f"{wd['cost']}", r.centerx, r.y + 68, FONT, C_DARK, center=True, shadow=False)
+            if self.wild_cd > 0:
+                sf = pygame.Surface((r.w, max(1, int(r.h * self.wild_cd / wd["cd"]))), pygame.SRCALPHA)
+                sf.fill((16, 10, 4, 160))
+                screen.blit(sf, (r.x, r.y))
+                txt(str(int(self.wild_cd) + 1), r.centerx, r.y + 36, FONT_M, (250, 240, 210), center=True)
         r = self.btn_wallet
         maxed = self.wallet >= WALLET_MAX
         can = not maxed and self.money >= self.wallet_cost
@@ -5413,7 +5929,36 @@ class GameUI:
             for x, y, ph, sp in self.amb[:18]:
                 pygame.draw.rect(screen, (222, 196, 154), (int((x + t * 70 * sp) % W), int(360 + y % 60), 3, 1))
 
+    def draw_weather(self):
+        w = self.weather
+        if not w or self.headless:
+            return
+        a = self.anim
+        if w["kind"] in ("rain", "storm"):
+            ov = pygame.Surface((W, UI_Y), pygame.SRCALPHA)
+            ov.fill((30, 40, 70, 70 if w["kind"] == "rain" else 110))
+            screen.blit(ov, (0, 0))
+            for x, y, ph, sp in self.amb[:34]:
+                for k in range(2):
+                    px = (x + k * 470 - a * 140 * sp) % W
+                    py = (y * 1.2 + a * 560 * sp + k * 200) % UI_Y
+                    pygame.draw.line(screen, (170, 190, 230), (px, py), (px - 4, py + 12))
+            if w["kind"] == "storm" and (a % 6.0) < 0.15 and self.sv["opts"].get("flashes", True):
+                fl = pygame.Surface((W, UI_Y), pygame.SRCALPHA)
+                fl.fill((255, 255, 255, 90))
+                screen.blit(fl, (0, 0))
+        else:
+            for k in range(7):
+                fog = pygame.Surface((420, 130), pygame.SRCALPHA)
+                pygame.draw.ellipse(fog, (225, 230, 236, 60), (0, 0, 420, 130))
+                screen.blit(fog, (int((k * 190 + a * 22) % (W + 420)) - 420, 220 + (k * 37) % 150))
+        lab = {"rain": "Pluja: " + ("abelles" if w["side"] == 0 else "enemics") + " -30% de velocitat", "storm": "Tempesta: llamps i pluja",
+               "fog": "Boira: menys abast a distància"}[w["kind"]]
+        txt("%s (%d s)" % (lab, max(0, int(w["dur"] - w["t"]))), W // 2, 80, FONT_S, (190, 210, 250), center=True)
+
     def draw_night(self):
+        if not self.night_allowed():
+            return
         n = 0.0 if self.headless else night_amount(self.time)
         if self.stage.get("night") and not self.headless:
             n = max(n, 0.9)
@@ -5448,6 +5993,48 @@ class GameUI:
             im = pygame.transform.rotate(dd["img"], dd["rot"])
             im.set_alpha(max(0, int(255 * (1 - dd["t"] / 0.75))))
             screen.blit(im, im.get_rect(center=(dd["x"], dd["y"])))
+        if self.expl:
+            et = self.expl["t"]
+            ox, oy = self.expl["x"], self.expl["y"] - 30
+            for k in range(5):
+                rr = int((et * 1.5 - k * 0.16) * 1200)
+                if rr > 0:
+                    pygame.draw.circle(screen, (255, max(40, 220 - k * 45), max(20, 90 - k * 18)), (int(ox), int(oy)), rr, max(2, 16 - k * 2))
+            self._glow(ox, oy, 260 + et * 500, (255, 170, 60), 140 * max(0.0, 1 - et / 2.0))
+            for k in range(140):
+                ang = k * 0.2
+                sp_ = 200 + (k * 37) % 700
+                px = ox + math.cos(ang) * sp_ * et
+                py = oy + math.sin(ang) * sp_ * et * 0.7 + 380 * et * et
+                pygame.draw.circle(screen, ((255, 230, 120), (255, 140, 50), (250, 250, 240))[k % 3], (int(px), int(py)), max(1, int(7 * max(0.0, 1 - et / 2.2))))
+            fl = pygame.Surface((W, UI_Y), pygame.SRCALPHA)
+            fl.fill((255, 250, 235, int(255 * max(0.0, 1 - et / 1.0))))
+            screen.blit(fl, (0, 0))
+        if self.shield_fx > 0:
+            sf_ = self.shield_fx
+            hx_, hy_ = CAT_BASE_X, GROUND - 70
+            rad = int(110 + (2.0 - sf_) * 60)
+            gs = pygame.Surface((rad * 2 + 8, rad * 2 + 8), pygame.SRCALPHA)
+            pygame.draw.circle(gs, (110, 210, 255, int(70 * min(1.0, sf_))), (rad + 4, rad + 4), rad)
+            pygame.draw.circle(gs, (190, 240, 255, int(200 * min(1.0, sf_))), (rad + 4, rad + 4), rad, 4)
+            screen.blit(gs, (hx_ - rad - 4, hy_ - rad - 4))
+            wr = int((2.0 - sf_) * 700)
+            if wr > 0:
+                pygame.draw.circle(screen, (190, 240, 255), (int(self.meta["x"] if self.meta else ENEMY_BASE_X - 200), GROUND - 60), wr, 3)
+        if self.meta:
+            mt = self.meta["t"]
+            mx_, my_ = self.meta["x"], self.meta["y"] - 20
+            if mt < 2.4:
+                shk = math.sin(mt * 40) * (2 + mt * 3)
+                self._glow(mx_, my_ - 20, 90 + 20 * math.sin(mt * 8), (255, 120, 220), 70)
+                pygame.draw.ellipse(screen, (236, 232, 244), (mx_ - 36 + shk, my_ - 90, 72, 120))
+                pygame.draw.ellipse(screen, (150, 140, 170), (mx_ - 36 + shk, my_ - 90, 72, 120), 3)
+                for k in range(1, 6):
+                    pygame.draw.line(screen, (190, 180, 210), (mx_ - 34 + shk, my_ - 90 + k * 20), (mx_ + 34 + shk, my_ - 84 + k * 20), 2)
+                for k in range(min(4, int(mt * 2))):
+                    pygame.draw.line(screen, (255, 80, 120), (mx_ - 10 + shk + k * 6, my_ - 70 + k * 14), (mx_ + 6 + shk + k * 4, my_ - 52 + k * 16), 3)
+            else:
+                self._glow(mx_, my_ - 40, 160, (255, 200, 250), 120 * max(0.0, 1 - (mt - 2.4)))
         for f in self.fx:
             frs = IMG[f["name"]]
             im = frs[min(int(f["t"] * f["fps"]), len(frs) - 1)]
@@ -5456,6 +6043,7 @@ class GameUI:
             screen.blit(im, im.get_rect(center=(f["x"], f["y"])))
         screen.blit(IMG[self.stage["bg"] + "_fg"], (0, 0))
         self.draw_night()
+        self.draw_weather()
         for m in self.haz:
             k = m["kind"]
             col = {"lava": (255, 150, 60), "lightning": (214, 226, 255), "sting": (232, 70, 56),
@@ -5481,7 +6069,7 @@ class GameUI:
                     screen.blit(pollen_img(sc), (x, y))
         if self.flash > 0 and self.sv["opts"].get("flashes", True):
             fl = pygame.Surface((W, UI_Y), pygame.SRCALPHA)
-            fl.fill((255, 255, 255, int(190 * self.flash / 0.3)))
+            fl.fill((255, 255, 255, max(0, min(255, int(190 * self.flash / 0.3)))))
             screen.blit(fl, (0, 0))
         if self.banner[1] > 0:
             a_ = min(1.0, self.banner[1] / 0.8)
@@ -5494,6 +6082,17 @@ class GameUI:
             pygame.draw.rect(screen, (60, 80, 70), box)
             txt(tt, box.centerx, box.centery, FONT_S, C_TXT, center=True, shadow=False)
         self.draw_battle_ui()
+
+    def draw_surv_prompt(self):
+        veil = pygame.Surface((W, H), pygame.SRCALPHA)
+        veil.fill((10, 10, 30, 200))
+        screen.blit(veil, (0, 0))
+        txt("HAS ARRIBAT ALS 15 MINUTS!", W // 2, 100, FONT_B, C_GOLD, center=True)
+        for i, ln in enumerate(("Pots sortir ara i reclamar la recompensa,", "o continuar: la dificultat pujarà de cop.",
+                                "Al minut 20 serà MOLT DIFÍCIL, amb una recompensa especial:", "totes les abelles pugen 1 nivell.")):
+            txt(ln, W // 2, 160 + i * 28, FONT, C_TXT, center=True)
+        self.ui_button(pygame.Rect(W // 2 - 220, 290, 440, 58), "Sortir i reclamar la recompensa", self.surv_exit, True, FONT_M)
+        self.ui_button(pygame.Rect(W // 2 - 220, 362, 440, 58), "Continuar (més difícil)", self.surv_continue, True, FONT_M)
 
     def draw_continue(self):
         veil = pygame.Surface((W, H), pygame.SRCALPHA)
@@ -5543,13 +6142,14 @@ class GameUI:
         self.ui_button(pygame.Rect(W // 2 - 160, 190, 320, 54), "Continua", self.resume, True, FONT_M)
         self.ui_button(pygame.Rect(W // 2 - 160, 256, 320, 54), "Velocitat: x%d" % self.speed, self.toggle_speed, True,
                        FONT_M)
-        self.ui_button(pygame.Rect(W // 2 - 160, 322, 320, 54), "Abandona el nivell", self.abandon, True, FONT_M)
+        self.ui_button(pygame.Rect(W // 2 - 160, 322, 320, 54),
+                       "Rendeix-te (captura)" if self.stage.get("boss") else "Abandona el nivell", self.abandon, True, FONT_M)
         txt("ESC o P per continuar", W // 2, 406, FONT_S, C_TXT, center=True)
 
     # =================================================== MENÚS
     def build_logo(self):
         def layered(text, size, top, bot, ow):
-            font = mkfont(size)
+            font = pygame.font.SysFont(PF, size, bold=True)
             base = font.render(text, True, (255, 255, 255))
             w, h = base.get_size()
             surf = pygame.Surface((w + 2 * ow + 12, h + 2 * ow + 12), pygame.SRCALPHA)
@@ -5604,6 +6204,12 @@ class GameUI:
         self.ui_button(pygame.Rect(W // 2 - 150, 344, 300, 54), "SORTIR", self.quit_game, True, FONT_M)
         self.ui_button(pygame.Rect(W // 2 - 150, 410, 146, 40), "La història", lambda: self.start_intro(True, "title"), True, FONT_S)
         self.ui_button(pygame.Rect(W // 2 + 4, 410, 146, 40), "El tutorial", lambda: self.start_tutorial(True, "title"), True, FONT_S)
+        nev = len(self.active_events())
+        nb = pygame.Rect(W - 230, 14, 216, 42)
+        self.ui_button(nb, "Notícies (%d)" % nev, lambda: self.go("news"), True, FONT)
+        if nev:
+            pygame.draw.circle(screen, C_RED, (nb.right - 4, nb.y + 4), 11)
+            txt(str(nev), nb.right - 4, nb.y + 4, FONT_S, (255, 255, 255), center=True, shadow=False)
         self.icon_button(pygame.Rect(W - 72, H - 72, 58, 58), lambda x, y: draw_gear(x, y, 20, C_DARK),
                          lambda: self.go("options"))
         self.icon_button(pygame.Rect(14, H - 72, 58, 58), lambda x, y: draw_chart(x, y, 15, C_DARK),
@@ -5648,22 +6254,31 @@ class GameUI:
         draw_stall(r.centerx, r.y + 50, 26)
         txt("Botiga", r.centerx, r.bottom - 22, FONT_S, C_TXT, center=True)
         self.btn(r, lambda: self.go("shop"))
-        ev = current_event()
-        txt("Esdeveniment: " + ev["name"] + " (" + ev["desc"] + ")", 560, 52, FONT_S, (250, 220, 150))
-        bub = pygame.Rect(560, 70, 400, 150)
+        nev = len(self.active_events())
+        nb = pygame.Rect(560, 56, 400, 40)
+        self.ui_button(nb, "NOTÍCIES I ESDEVENIMENTS (%d)" % nev, lambda: self.go("news"), True, FONT)
+        if nev:
+            pygame.draw.circle(screen, C_RED, (nb.right - 6, nb.y + 4), 11)
+            txt(str(nev), nb.right - 6, nb.y + 4, FONT_S, (255, 255, 255), center=True, shadow=False)
+        bub = pygame.Rect(560, 108, 400, 130)
         pygame.draw.rect(screen, C_BORDER, bub.inflate(6, 6))
         pygame.draw.rect(screen, (66, 80, 76), bub)
         pygame.draw.rect(screen, (150, 170, 160), bub, 2)
-        pygame.draw.polygon(screen, (66, 80, 76), [(700, 220), (760, 220), (750, 262)])
-        pygame.draw.lines(screen, (150, 170, 160), False, [(700, 220), (750, 262), (760, 220)], 2)
+        pygame.draw.polygon(screen, (66, 80, 76), [(700, 238), (760, 238), (750, 274)])
+        pygame.draw.lines(screen, (150, 170, 160), False, [(700, 238), (750, 274), (760, 238)], 2)
         for i, line in enumerate(TIPS[self.tip]):
-            txt(line, bub.centerx, bub.y + 34 + i * 34, FONT, C_TXT, center=True)
+            txt(line, bub.centerx, bub.y + 28 + i * 32, FONT, C_TXT, center=True)
         key = "queen" if "queen" in self.sv["owned"] else "honey"
-        big = fit(anim_img(IMG["ally_" + key], self.anim, 6), 420, 230)
-        screen.blit(big, big.get_rect(center=(790, 380 + math.sin(self.anim * 2) * 6)))
+        big = fit(anim_img(IMG["ally_" + key], self.anim, 6), 560, 330)
+        screen.blit(big, big.get_rect(center=(770, 372 + math.sin(self.anim * 2) * 6)))
         bx = 92
+        extra = [(lambda x, y: draw_house(x, y, 13), lambda: self.go("skins"), 0)]
+        if self.sv["captured"]:
+            extra.append((lambda x, y: draw_cage(x, y, 13), lambda: self.go("rescue"), len(self.sv["captured"])))
+        if self.sv["progress"] >= MAIN_STAGES:
+            extra.append((lambda x, y: draw_paw(x, y, 13), lambda: self.go("tame"), 0))
         for fn, act, bd in ((lambda x, y: draw_book(x, y, 13, C_DARK), lambda: self.go("bestiary"), 0),
-                            (lambda x, y: draw_gift(x, y, 12), self.claim_gift, 1 if self.gift_ready() else 0)):
+                            (lambda x, y: draw_gift(x, y, 12), self.claim_gift, 1 if self.gift_ready() else 0)) + tuple(extra):
             self.icon_button(pygame.Rect(bx, H - 42, 50, 36), fn, act, bd)
             bx += 58
 
@@ -5697,6 +6312,17 @@ class GameUI:
                 for q, eid in enumerate(stage_enemy_ids(s)[:4]):
                     ic = fit(IMG["enemy_" + ENEMIES[eid].get("sprite", eid)][0], 36, 36)
                     screen.blit(ic, ic.get_rect(center=(r.x + 330 + q * 40, r.y + 56)))
+        hov = None
+        mp_ = pygame.mouse.get_pos()
+        for j, s_ in enumerate(STAGES[pg_ * 6:(pg_ + 1) * 6]):
+            if pygame.Rect(20 + (j % 2) * 490, 56 + (j // 2) * 100, 470, 92).collidepoint(mp_):
+                hov = pg_ * 6 + j
+        if hov is not None and hov <= unlocked:
+            c2_, c3_ = stage_star_conds(hov)
+            txt("2a estrella: " + star_text(hov, c2_), 20, 362, FONT_S, (250, 220, 130))
+            txt("3a estrella: " + star_text(hov, c3_), 20, 380, FONT_S, (250, 220, 130))
+        else:
+            txt("Passa el ratolí per sobre d'un nivell per veure com aconseguir-ne les estrelles", 20, 370, FONT_S, (176, 166, 140))
         txt("Equip actual:", 20, 404, FONT, C_TXT)
         for i, k in enumerate(self.sv["deck"]):
             rr = pygame.Rect(20 + i * 86, 426, 80, 56)
@@ -5721,7 +6347,8 @@ class GameUI:
     def bee_stats(self, key, lv):
         b = BEE_BY_KEY[key]
         m = lvl_mult(lv) * (EVO_MULT if self.sv["evo"].get(key) else 1.0)
-        return int(b["hp"] * m), int(b["atk"] * m)
+        mu = MUTATIONS.get(self.sv["mut"].get(key), {})
+        return int(b["hp"] * m * mu.get("hp", 1.0)), int(b["atk"] * m * mu.get("atk", 1.0))
 
     def owned_bees(self):
         return [b for b in BEE_UNITS if b["key"] in self.sv["owned"]]
@@ -5746,7 +6373,9 @@ class GameUI:
             txt(f"PV  {hp}", r.x + 110, r.y + 46, FONT_S, C_TXT)
             txt(f"ATQ {atk}", r.x + 110, r.y + 58, FONT_S, C_TXT)
             if lv >= MAX_LV and self.sv["evo"].get(k):
-                self.ui_button(pygame.Rect(r.x + 8, r.y + 100, r.w - 16, 28), "EVOLUCIONADA", lambda: None, False, FONT_S)
+                mname = MUTATIONS[self.sv["mut"][k]]["name"] if self.sv["mut"].get(k) in MUTATIONS else "tria"
+                self.ui_button(pygame.Rect(r.x + 8, r.y + 100, r.w - 16, 28), "Mutació: " + mname,
+                               (lambda k=k: setattr(self, "mut_sel", k)), True, FONT_S)
                 draw_star(r.right - 14, r.y + 14, 8, True)
             elif lv >= MAX_LV:
                 self.ui_button(pygame.Rect(r.x + 8, r.y + 100, r.w - 16, 28), f"Evoluciona {EVO_MEL} mel+{EVO_POLLEN} pol",
@@ -5755,6 +6384,30 @@ class GameUI:
                 c = self.upg_cost(k)
                 self.ui_button(pygame.Rect(r.x + 8, r.y + 100, r.w - 16, 28), f"Millora   {c} mel",
                                (lambda k=k: self.upgrade_bee(k)), self.sv["mel"] >= c, FONT)
+        if self.mut_sel:
+            self.draw_mut_panel()
+
+    def draw_mut_panel(self):
+        k = self.mut_sel
+        self.btn(pygame.Rect(0, 0, W, H), lambda: None)           # bloqueja els botons de sota
+        veil = pygame.Surface((W, H), pygame.SRCALPHA)
+        veil.fill((0, 0, 0, 170))
+        screen.blit(veil, (0, 0))
+        panel = pygame.Rect(W // 2 - 340, 100, 680, 330)
+        self.card(panel, "legend", hl=True)
+        txt("Mutació de " + BEE_BY_KEY[k]["name"], panel.centerx, panel.y + 24, FONT_M, C_GOLD, center=True)
+        txt("Cost: %d mel + %d pol·len (cada canvi)" % (MUT_MEL, MUT_POLLEN), panel.centerx, panel.y + 56, FONT_S, C_TXT, center=True)
+        can = self.sv["mel"] >= MUT_MEL and self.sv["pollen"] >= MUT_POLLEN
+        for i, (mk, mv) in enumerate(MUTATIONS.items()):
+            r = pygame.Rect(panel.x + 20 + i * 214, panel.y + 90, 204, 160)
+            self.card(r, hl=(self.sv["mut"].get(k) == mk))
+            txt(mv["name"], r.centerx, r.y + 22, FONT, C_GOLD, center=True)
+            for j, ln in enumerate(wrap_text(mv["desc"], FONT_S, r.w - 20)[:3]):
+                txt(ln, r.centerx, r.y + 56 + j * 18, FONT_S, C_TXT, center=True)
+            cur = self.sv["mut"].get(k) == mk
+            self.ui_button(pygame.Rect(r.x + 14, r.bottom - 46, r.w - 28, 34), "ACTIVA" if cur else "Escull",
+                           (lambda mk=mk: self.set_mutation(k, mk)), can and not cur, FONT_S)
+        self.ui_button(pygame.Rect(panel.centerx - 80, panel.bottom - 54, 160, 40), "Tanca", lambda: setattr(self, "mut_sel", None), True, FONT_S)
 
     def draw_equip(self):
         self.chrome("Equip de batalla", theme="equip")
@@ -5821,9 +6474,7 @@ class GameUI:
         self.chrome("Missions", theme="missions")
         tabs = [("Diàries", "daily", self.daily_claimable()), ("Setmanals", "weekly", self.weekly_claimable()),
                 ("Històriques", "hist", self.claimable())]
-        if self.sv["captured"]:
-            tabs.append(("Rescat", "rescue", len(self.sv["captured"])))
-        elif self.mtab == "rescue":
+        if self.mtab == "rescue":
             self.mtab = "daily"
         for i, (lab, key, nn) in enumerate(tabs):
             r = pygame.Rect(20 + i * 180, 56, 172, 34)
@@ -6274,6 +6925,10 @@ class GameUI:
                 pw = (r.w - 140) // cd["mx"]
                 pygame.draw.rect(screen, C_GOLD if k < lv else (60, 50, 40), (r.x + 10 + k * pw, r.y + 54, pw - 3, 10))
             txt(f"Nv {lv}/{cd['mx']}", r.x + 10, r.y + 70, FONT_S, C_TXT)
+            if cd["id"] == "swarm" and self.sv["deck"]:
+                sk = self.sv.get("swarm_key")
+                sk = sk if sk in self.sv["deck"] else min(self.sv["deck"], key=lambda k: BEE_BY_KEY[k]["cost"])
+                self.ui_button(pygame.Rect(r.x + 80, r.y + 66, 112, 24), BEE_BY_KEY[sk]["name"][:12], self.cycle_swarm, True, FONT_S)
             if lv >= cd["mx"]:
                 self.ui_button(pygame.Rect(r.right - 122, r.y + 50, 110, 38), "MÀXIM", lambda: None, False, FONT_S)
             else:
@@ -6307,13 +6962,13 @@ class GameUI:
 
     # ======================= HISTÒRIA INICIAL
     def story_list(self):
-        return {"intro": INTRO_SCENES, "win": WIN_SCENES, "lose": LOSE_SCENES}[self.story_kind]
+        return {"intro": INTRO_SCENES, "win": WIN_SCENES, "lose": LOSE_SCENES, "finale": FINALE_SCENES}[self.story_kind]
 
     def story_music(self):
         i = self.intro_scene()[0]
         if self.story_kind == "intro":
             return INTRO_MUSIC[min(i, len(INTRO_MUSIC) - 1)]
-        if self.story_kind == "win":
+        if self.story_kind in ("win", "finale"):
             return "epic" if i < 2 else "calm"
         return "boss" if i == 0 else "tense"
 
@@ -6363,8 +7018,11 @@ class GameUI:
     def finish_intro(self):
         if self.state != "intro" and not self.trans:
             return
-        if self.story_kind in ("win", "lose"):
-            self.go(self.story_kind)
+        if self.story_kind in ("win", "finale"):
+            self.go("win")
+            return
+        if self.story_kind == "lose":
+            self.go("base")
             return
         self.sv["intro_done"] = True
         self.save()
@@ -6376,6 +7034,8 @@ class GameUI:
     def start_tutorial(self, replay=False, back="help"):
         self.story_back = back
         self.tut_i = 0
+        self.tut_state = {}
+        self.tut_done = [False] * len(TUT_CARDS)
         self.tut_replay = replay
         self.go("tutorial")
 
@@ -6383,13 +7043,6 @@ class GameUI:
         self.sv["tut_done"] = True
         self.save()
         self.go(self.story_back if self.tut_replay else "title")
-
-    def tut_step(self, d):
-        n = self.tut_i + d
-        if n >= len(TUT_CARDS):
-            self.finish_tutorial()
-        else:
-            self.tut_i = max(0, n)
 
     def story_key(self, key):
         if self.state == "intro":
@@ -6601,8 +7254,8 @@ class GameUI:
             txt(name, W // 2, 39, FONT_M, (250, 224, 190), center=True)
             if lt > 1.8:
                 txt("CONQUERIT", W // 2, 84, FONT_M, (240, 80, 64), center=True)
-            conq = min(len(STAGES), 1 + int(t / SLOT * 3))
-            nst = len(STAGES)
+            conq = min(MAIN_STAGES, 1 + int(t / SLOT * 3))
+            nst = MAIN_STAGES
             for k in range(nst):
                 px_ = W // 2 - (nst - 1) * 7 + k * 14
                 pygame.draw.circle(screen, C_BORDER, (px_, 118), 6)
@@ -6669,7 +7322,7 @@ class GameUI:
         elif sc == 8:
             self._bg("bg_meadow")
             self._veil(0.5, (20, 14, 8))
-            nst = len(STAGES)
+            nst = MAIN_STAGES
             pts = [(60 + i * 38, 300 + 80 * math.sin(i * 0.55)) for i in range(nst)]
             for k in range(nst - 1):
                 pygame.draw.line(screen, (60, 40, 20), pts[k], pts[k + 1], 7)
@@ -6762,6 +7415,26 @@ class GameUI:
                     ang = a * 1.3 + k * 0.4
                     pygame.draw.rect(screen, (255, 244, 180), (int(580 + math.cos(ang) * (70 + 20 * math.sin(a + k))), int(by - 60 + math.sin(ang) * 60), 3, 3))
                 self._bubble(300, 110, "Reina Melissa", "Has salvat el nostre món, Flor. La llum sempre va ser teva.", t, (150, 90, 20), 340)
+            elif sc == 3:                                 # l'ou negre i la Cria Reial
+                self._bg("bg_meadow")
+                self._veil(0.55, (40, 10, 30))
+                self._embers(t, (200, 80, 255), 18)
+                ex_, ey_ = W // 2, GROUND + 6
+                hatch = min(1.0, max(0.0, (t - 2.8) / 0.6))
+                if hatch < 1.0:
+                    shk = math.sin(t * 40) * min(4.0, t) * (1 - hatch)
+                    self._glow(ex_, ey_ - 30, 90, (255, 50, 80), 40 + 30 * min(1.0, t / 3.0))
+                    pygame.draw.ellipse(screen, (10, 6, 16), (ex_ - 30 + shk, ey_ - 66, 60, 78))
+                    pygame.draw.ellipse(screen, (60, 28, 70), (ex_ - 30 + shk, ey_ - 66, 60, 78), 3)
+                    pygame.draw.ellipse(screen, (110, 70, 130), (ex_ - 18 + shk, ey_ - 56, 14, 26))
+                    for k in range(min(5, int(t * 1.6))):
+                        pygame.draw.line(screen, (255, 60, 70), (ex_ - 12 + shk + k * 5, ey_ - 50 + k * 8), (ex_ + 6 + shk + k * 3, ey_ - 36 + k * 9), 2)
+                else:
+                    self._glow(ex_, ey_ - 40, 130, (255, 60, 90), 70)
+                    self._walker("royal_spawn", ex_ - 120 + (t - 3.4) * 60, GROUND + 28, 150, 110, True, 8)
+                if hatch >= 1.0 and int(a * 2) % 2 == 0:
+                    txt("NOU ENEMIC DESBLOQUEJAT: Cria Reial", W // 2, 70, FONT_M, (255, 120, 110), center=True)
+                    txt("(apareix a Supervivència i al Bestiari)", W // 2, 100, FONT_S, (250, 200, 190), center=True)
             else:
                 self._bg("bg_meadow")
                 self._veil(0.28, (255, 140, 60))
@@ -6774,6 +7447,67 @@ class GameUI:
                     self._walker(k, x, 380 + 24 * math.sin(a * 2 + i) - (i % 3) * 36, 70, 50, rate=14)
                 if sc == 4:
                     txt("Gràcies per jugar!", W // 2, 330, FONT_M, (255, 240, 200), center=True)
+        elif kind == "finale":
+            if sc == 0:                                   # la papallona es desfà en llum
+                self._bg("bg_ash")
+                self._veil(0.3, (40, 10, 50))
+                fade = max(0.0, 1.0 - max(0.0, t - 2.0) / 3.5)
+                self._glow(W // 2, 220, 200 + 60 * math.sin(a * 3), (255, 120, 220), 70 * fade + 20)
+                if fade > 0:
+                    frames_ = IMG["enemy_royal_butterfly"]
+                    im = fit(anim_img(frames_, a, 12), 340, 260)
+                    tmp = im.copy()
+                    tmp.set_alpha(int(255 * fade))
+                    screen.blit(tmp, tmp.get_rect(center=(W // 2, 220 + math.sin(a * 2) * 10)))
+                for k in range(60):
+                    ang = k * 0.21
+                    r_ = (t * (50 + (k * 17) % 120)) % 420
+                    col = ((255, 190, 240), (255, 230, 120), (190, 200, 255))[k % 3]
+                    pygame.draw.circle(screen, col, (int(W // 2 + math.cos(ang) * r_), int(220 + math.sin(ang) * r_ * 0.8)), max(1, int(5 * (1 - r_ / 420.0))))
+                if flashes:
+                    fl = pygame.Surface((W, H), pygame.SRCALPHA)
+                    fl.fill((255, 250, 235, int(200 * max(0.0, 1 - (t - 2.0) / 0.6)) if 2.0 <= t < 2.6 else 0))
+                    screen.blit(fl, (0, 0))
+            elif sc == 1:                                 # el niu s'esfondra
+                self._bg("bg_ash")
+                self._veil(0.25, (60, 20, 20))
+                ob = IMG["base_obelisk"]
+                ob = ob[0] if isinstance(ob, list) else ob
+                sink = min(1.0, t / 5.0) * 120
+                screen.blit(ob, ob.get_rect(midbottom=(W // 2 + random.uniform(-2, 2), GROUND + 30 + sink)))
+                for k in range(26):
+                    px = W // 2 - 140 + (k * 53) % 280
+                    py = (GROUND - 100 + (t * (90 + (k * 31) % 80) + k * 40) % 220)
+                    pygame.draw.rect(screen, (96, 84, 76), (int(px), int(py), 5, 5))
+                self._embers(t, (255, 140, 60), 26)
+            elif sc == 2:                                 # la llum torna
+                self._bg("bg_meadow")
+                self._glow(150, 70, 140, (255, 236, 150), 120)
+                screen.blit(hive, (hx, hy))
+                self._glow(430, 250, 120, (255, 214, 90), 60)
+                self._walker("queen", 430, 300 + math.sin(a * 2) * 4, 170, 124, rate=8)
+                self._walker("honey", 600, 304 + math.sin(a * 3) * 4, 130, 96, rate=14)
+                conf = ((236, 200, 70), (220, 90, 70), (96, 170, 220), (120, 200, 110), (230, 140, 200), (250, 250, 240))
+                for i, (x, y, ph, sp) in enumerate(self.amb):
+                    px = (x * 1.3 + 40 * math.sin(a * 1.7 + ph)) % W
+                    py = ((y * 1.7 + a * 90 * sp) % (UI_Y + 40)) - 20
+                    pygame.draw.rect(screen, conf[i % 6], (int(px), int(py), 6, 10))
+            elif sc == 3:                                 # una llavor negra batega
+                self._bg("bg_meadow")
+                self._veil(0.6, (30, 8, 30))
+                self._embers(t, (190, 70, 255), 20)
+                pl = 0.5 + 0.5 * math.sin(a * 3)
+                self._glow(W // 2, GROUND, 90 + 20 * pl, (255, 50, 80), 50 + 40 * pl)
+                pygame.draw.ellipse(screen, (10, 6, 16), (W // 2 - 14, GROUND - 24 - 3 * pl, 28, 36 + 6 * pl))
+                pygame.draw.ellipse(screen, (110, 70, 130), (W // 2 - 8, GROUND - 18, 6, 12))
+            else:
+                self._bg("bg_meadow")
+                self._veil(0.28, (255, 140, 60))
+                if self.logo is None:
+                    self.logo = self.build_logo()
+                self._glow(W // 2, 200, 300, (255, 214, 90), 70)
+                screen.blit(self.logo, self.logo.get_rect(center=(W // 2, 190 + math.sin(a * 1.6) * 4)))
+                txt("Gràcies per jugar!", W // 2, 330, FONT_M, (255, 240, 200), center=True)
         else:                                             # DERROTA
             if sc == 0:
                 self._bg("bg_meadow")
@@ -6863,31 +7597,89 @@ class GameUI:
         self.ui_button(pygame.Rect(W - 140, 16, 118, 34), "Salta >>", self.finish_intro, True, FONT_S)
 
     # ======================= TUTORIAL
+    def tut_ok(self):
+        self.tut_done[self.tut_i] = True
+
+    def tut_do(self, kind, arg=None):
+        st = self.tut_state
+        a = self.anim
+        if kind == "spawn":
+            st.setdefault("bees", []).append((a, arg))
+            st["bees"] = st["bees"][-8:]
+            sfx("buzz")
+        elif kind == "wallet":
+            st["w"] = min(6, st.get("w", 1) + 1)
+            sfx("coin")
+        elif kind == "horn":
+            st["fire"] = a
+            sfx("cannon")
+        elif kind == "swarm":
+            st["swarm"] = a
+            sfx("ability")
+        elif kind == "heal":
+            st["heal"] = a
+            sfx("ability")
+        elif kind == "role":
+            st["msg"] = "Correcte! El Tanc rep els atacs primer." if arg == "Tanc" else "Gairebé... torna-ho a provar!"
+            if arg != "Tanc":
+                return
+        elif kind == "news":
+            st["news"] = True
+        elif kind == "rescue":
+            st["rescue"] = True
+            sfx("magic")
+        elif kind == "mut":
+            st["mut"] = arg
+            sfx("levelup")
+        elif kind == "rain":
+            st["rain"] = a
+            sfx("warn")
+        self.tut_ok()
+
+    def tut_step(self, d):
+        n = self.tut_i + d
+        if d > 0 and not self.tut_done[self.tut_i]:
+            self.ui_say("Fes l'acció d'aquesta targeta per continuar")
+            return
+        if n >= len(TUT_CARDS):
+            self.finish_tutorial()
+        else:
+            self.tut_i = max(0, n)
+            self.tut_state = {}
+
+    def tut_bg_click(self):
+        if self.tut_done[self.tut_i] or self.tut_i == len(TUT_CARDS) - 1:
+            self.tut_step(1)
+
     def draw_tutorial(self):
         screen.blit(self.hexbg("base"), (0, 0))
-        title, lines = TUT_CARDS[self.tut_i]
+        title, lines, hint = TUT_CARDS[self.tut_i]
         pygame.draw.rect(screen, C_WOOD, (0, 0, W, 48))
         pygame.draw.rect(screen, C_WOOD_L, (0, 0, W, 3))
-        txt("Tutorial  %d/%d" % (self.tut_i + 1, len(TUT_CARDS)), 16, 9, FONT_M, C_TXT)
-        left = pygame.Rect(30, 70, 440, 330)
+        txt("Tutorial interactiu  %d/%d" % (self.tut_i + 1, len(TUT_CARDS)), 16, 9, FONT_M, C_TXT)
+        left = pygame.Rect(30, 62, 440, 346)
         self.card(left)
         self.tut_art(self.tut_i, left)
-        right = pygame.Rect(490, 70, 480, 330)
+        right = pygame.Rect(490, 62, 480, 346)
         self.card(right, hl=True)
-        txt(title, right.x + 20, right.y + 18, FONT_M, C_GOLD)
+        txt(title, right.x + 20, right.y + 16, FONT_M, C_GOLD)
         for i, ln in enumerate(lines):
-            txt(ln, right.x + 20, right.y + 74 + i * 30, FONT, C_TXT)
-        for i in range(len(TUT_CARDS)):
-            pygame.draw.circle(screen, C_GOLD if i == self.tut_i else (90, 78, 60), (W // 2 - 50 + i * 20, 430), 6)
-        if int(self.anim * 2) % 2 == 0:
-            txt("Clica per continuar  >", W // 2, 414, FONT_S, (250, 220, 130), center=True)
+            txt(ln, right.x + 20, right.y + 64 + i * 26, FONT_S if len(ln) > 46 else FONT, C_TXT)
+        done = self.tut_done[self.tut_i]
+        txt(("✔ Fet!" if done else "Fes-ho: " + hint), right.x + 20, right.bottom - 34, FONT, (150, 230, 150) if done else (250, 220, 130))
+        n = len(TUT_CARDS)
+        for i in range(n):
+            pygame.draw.circle(screen, C_GOLD if i == self.tut_i else ((150, 230, 150) if self.tut_done[i] else (90, 78, 60)),
+                               (W // 2 - (n - 1) * 10 + i * 20, 430), 6)
         self.ui_button(pygame.Rect(30, 456, 130, 44), "Enrere", lambda: self.tut_step(-1), self.tut_i > 0, FONT)
-        last = self.tut_i == len(TUT_CARDS) - 1
-        self.ui_button(pygame.Rect(W - 190, 456, 160, 44), "Comença!" if last else "Següent", lambda: self.tut_step(1), True, FONT)
+        last = self.tut_i == n - 1
+        self.ui_button(pygame.Rect(W - 190, 456, 160, 44), "Comença!" if last else "Següent", lambda: self.tut_step(1),
+                       done or last, FONT)
         self.ui_button(pygame.Rect(W // 2 - 70, 456, 140, 44), "Salta", self.finish_tutorial, True, FONT)
 
     def tut_art(self, i, r):
         a = self.anim
+        st = self.tut_state
         cx, cy = r.centerx, r.centery
         if i == 0:
             for k, key in enumerate(("honey", "bumble", "carpenter")):
@@ -6897,68 +7689,283 @@ class GameUI:
                 screen.blit(ic, ic.get_rect(center=(b.centerx, b.y + 36)))
                 txt("[%d]" % (k + 1), b.x + 6, b.y + 4, FONT_S, C_DARK, shadow=False)
                 txt(str(BEE_BY_KEY[key]["cost"]), b.centerx, b.y + 68, FONT, C_DARK, center=True, shadow=False)
+                self.btn(b, (lambda key=key: self.tut_do("spawn", key)))
             gy = r.y + 250
             pygame.draw.rect(screen, (96, 130, 70), (r.x + 8, gy, r.w - 16, 40))
-            hv = fit(IMG["base_hive"], 90, 110)
+            hv = fit(self.hive_img(), 90, 110)
             screen.blit(hv, hv.get_rect(midbottom=(r.x + 60, gy + 38)))
-            for k in range(3):
-                x = r.x + 130 + ((a * 50 + k * 110) % (r.w - 150))
-                self._walker(("honey", "bumble", "carpenter")[k], x, gy + 38, 60, 44, rate=10)
+            for t0, key in st.get("bees", []):
+                x = r.x + 110 + (a - t0) * 70
+                if x < r.right - 20:
+                    self._walker(key, x, gy + 38, 60, 44, rate=10)
+            txt("Clica un botó per generar una abella", cx, r.bottom - 26, FONT_S, C_TXT, center=True)
         elif i == 1:
-            screen.blit(IMG["icon_honey"], (r.x + 40, r.y + 40))
-            txt("Diners", r.x + 90, r.y + 48, FONT_M, C_GOLD)
-            fill = (a * 0.25) % 1.0
-            pygame.draw.rect(screen, (40, 14, 10), (r.x + 40, r.y + 100, 360, 22))
-            pygame.draw.rect(screen, C_GOLD, (r.x + 40, r.y + 100, int(360 * fill), 22))
-            txt("+16/s", r.x + 330, r.y + 48, FONT_M, (176, 214, 150))
-            b = pygame.Rect(r.x + 40, r.y + 160, 150, 90)
+            screen.blit(IMG["icon_honey"], (r.x + 40, r.y + 30))
+            w = st.get("w", 1)
+            txt("Diners", r.x + 90, r.y + 38, FONT_M, C_GOLD)
+            txt("+%d/s" % (16 + 6 * (w - 1)), r.x + 330, r.y + 38, FONT_M, (176, 214, 150))
+            pygame.draw.rect(screen, (40, 14, 10), (r.x + 40, r.y + 90, 360, 22))
+            pygame.draw.rect(screen, C_GOLD, (r.x + 40, r.y + 90, int(360 * ((a * (0.2 + 0.08 * w)) % 1.0)), 22))
+            b = pygame.Rect(r.x + 40, r.y + 150, 150, 90)
             button(b, C_BTN)
-            txt("[W] Rusc", b.centerx, b.y + 20, FONT_S, C_DARK, center=True, shadow=False)
-            txt("Nivell 1", b.centerx, b.y + 46, FONT, C_DARK, center=True, shadow=False)
-            txt("80", b.centerx, b.y + 70, FONT, C_DARK, center=True, shadow=False)
-            for k, ln in enumerate(("més ingressos", "menys recàrrega", "més botí")):
-                txt("+ " + ln, r.x + 220, r.y + 170 + k * 26, FONT, C_TXT)
+            txt("[W] Moneder", b.centerx, b.y + 20, FONT_S, C_DARK, center=True, shadow=False)
+            txt("Nivell %d" % w, b.centerx, b.y + 46, FONT, C_DARK, center=True, shadow=False)
+            txt("%d" % (80 * w), b.centerx, b.y + 70, FONT, C_DARK, center=True, shadow=False)
+            self.btn(b, lambda: self.tut_do("wallet"))
+            for k, ln in enumerate(("+6 diners/s", "-3% de recàrrega", "+4% de botí")):
+                txt("+ " + ln if k else ln, r.x + 220, r.y + 160 + k * 26, FONT, C_TXT)
         elif i == 2:
-            hn = fit(IMG["hive_cannon"], 260, 190)
-            screen.blit(hn, hn.get_rect(center=(cx - 40, cy + 10)))
-            ph = (a * 0.5) % 1.0
-            for k in range(14):
-                ang = -0.7 + k * 0.1
-                dd = ph * 190
-                x = cx + 60 + math.cos(ang) * dd + k * 3
-                y = cy - 70 + math.sin(ang) * dd * 0.6 + ph * 40
-                pygame.draw.circle(screen, (244, 214, 90), (int(x), int(y)), max(2, int(5 * (1 - ph))))
-            txt("[ESPAI]", cx, r.bottom - 30, FONT_M, C_GOLD, center=True)
+            hn = fit(IMG["hive_cannon"], 220, 160)
+            screen.blit(hn, hn.get_rect(center=(r.x + 120, cy - 30)))
+            fire = st.get("fire")
+            ex = r.x + 330 + (min(1.0, (a - fire) / 0.7) * 90 if fire else 0)
+            self._walker("ant", ex, cy + 70, 80, 60, True, 8)
+            if fire and a - fire < 1.0:
+                ph = (a - fire)
+                for k in range(14):
+                    ang = -0.5 + k * 0.08
+                    pygame.draw.circle(screen, (244, 214, 90), (int(r.x + 200 + math.cos(ang) * ph * 260), int(cy - 70 + math.sin(ang) * ph * 120 + ph * 60)), max(2, int(6 * (1 - ph))))
+            b = pygame.Rect(r.x + 120, r.bottom - 74, 200, 44)
+            button(b, C_BTN)
+            txt("[ESPAI] Dispara", b.centerx, b.centery, FONT, C_DARK, center=True, shadow=False)
+            self.btn(b, lambda: self.tut_do("horn"))
+            txt("No fereix la torre: només empeny", cx, r.y + 18, FONT_S, (250, 220, 130), center=True)
         elif i == 3:
-            for k, (lab, key) in enumerate((("[Q] Eixam", "honey"), ("[E] Cura", "nurse"))):
-                b = pygame.Rect(r.x + 40, r.y + 40 + k * 140, 170, 40)
+            for k, (lab, kind) in enumerate((("[Q] Eixam", "swarm"), ("[E] Cura", "heal"))):
+                b = pygame.Rect(r.x + 30, r.y + 40 + k * 140, 170, 44)
                 button(b, C_BTN)
                 txt(lab, b.centerx, b.centery, FONT, C_DARK, center=True, shadow=False)
-                for j in range(4 if k == 0 else 3):
-                    self._walker(key, r.x + 270 + j * 40, r.y + 100 + k * 140 + 4 * math.sin(a * 5 + j), 52, 40, rate=12)
+                self.btn(b, (lambda kind=kind: self.tut_do(kind)))
+            t0 = st.get("swarm")
+            if t0:
+                for j in range(5):
+                    self._walker("honey", r.x + 250 + j * 34 + min(1.0, a - t0) * 60, r.y + 110 + 3 * math.sin(a * 6 + j), 52, 40, rate=12)
+            t1 = st.get("heal")
+            if t1 and a - t1 < 2.0:
+                self._glow(r.x + 300, r.y + 220, 70, (120, 230, 140), 90 * (1 - (a - t1) / 2.0))
+                self._walker("honey", r.x + 300, r.y + 250, 70, 50, rate=12)
+                txt("+ vida", r.x + 300, r.y + 160 - (a - t1) * 20, FONT, (150, 240, 160), center=True)
+            txt("Tria l'abella de l'Eixam al Rusc", cx, r.bottom - 22, FONT_S, C_TXT, center=True)
         elif i == 4:
+            txt("Quin rol atreu els atacs enemics?", cx, r.y + 18, FONT, C_GOLD, center=True)
             for k, (role, key) in enumerate((("Tanc", "bumble"), ("Atacant", "honey"), ("Tirador", "mason"), ("Control", "arctic"), ("Suport", "nurse"))):
-                y = r.y + 24 + k * 60
-                pygame.draw.rect(screen, C_BORDER, (r.x + 20, y, 400, 50), 1)
-                ic = fit(IMG["beeicon_" + key], 70, 40)
-                screen.blit(ic, ic.get_rect(center=(r.x + 60, y + 25)))
-                txt(role, r.x + 110, y + 14, FONT, C_GOLD)
-                txt(ROLE_INFO[role][:34], r.x + 210, y + 16, FONT_S, C_TXT)
+                y = r.y + 44 + k * 56
+                b = pygame.Rect(r.x + 20, y, 400, 48)
+                button(b, C_BTN_HOVER if st.get("msg", "").startswith("Correcte") and role == "Tanc" else C_BTN)
+                ic = fit(IMG["beeicon_" + key], 64, 38)
+                screen.blit(ic, ic.get_rect(center=(b.x + 40, b.centery)))
+                txt(role, b.x + 84, b.y + 6, FONT, C_DARK, shadow=False)
+                txt(ROLE_INFO[role][:34], b.x + 84, b.y + 28, FONT_S, C_DARK, shadow=False)
+                self.btn(b, (lambda role=role: self.tut_do("role", role)))
+            if st.get("msg"):
+                txt(st["msg"], cx, r.bottom - 14, FONT_S, (150, 230, 150) if st["msg"].startswith("Correcte") else (250, 170, 140), center=True)
+        elif i == 5:
+            nb = pygame.Rect(r.x + 20, r.y + 20, 400, 40)
+            self.ui_button(nb, "NOTÍCIES I ESDEVENIMENTS (4)", lambda: self.tut_do("news"), True, FONT)
+            if st.get("news"):
+                for k, (tt, ds) in enumerate((("Abelles potenciades", "3 abelles +25% vida i atac"), ("Hora feliç", "+40% de mel de 18 a 22 h"),
+                                              ("Cap de setmana d'ambre", "doble de fragments"))):
+                    rr = pygame.Rect(r.x + 20, r.y + 76 + k * 58, 400, 52)
+                    self.card(rr, "legend")
+                    txt(tt, rr.x + 10, rr.y + 6, FONT, C_GOLD)
+                    txt(ds + "  ->  recompensa: skin", rr.x + 10, rr.y + 30, FONT_S, C_TXT)
+            else:
+                txt("Clica el botó per veure els esdeveniments", cx, r.y + 150, FONT_S, C_TXT, center=True)
+            draw_house(r.x + 60, r.bottom - 60, 22)
+            txt("Torres del rusc", r.x + 60, r.bottom - 22, FONT_S, C_TXT, center=True)
+            draw_news(r.x + 400, r.bottom - 60, 18)
+            txt("Notícies", r.x + 400, r.bottom - 22, FONT_S, C_TXT, center=True)
+        elif i == 6:
+            c1 = pygame.Rect(r.x + 14, r.y + 14, 196, 300)
+            sel = st.get("rescue")
+            self.card(c1, "rare", hl=bool(sel))
+            sl = fit(IMG["sil_mason"], 150, 90)
+            screen.blit(sl, sl.get_rect(center=(c1.centerx, c1.y + 90)))
+            for bx_ in range(-80, 81, 20):
+                pygame.draw.line(screen, (80, 66, 96), (c1.centerx + bx_, c1.y + 40), (c1.centerx + bx_, c1.y + 140), 3)
+            txt("Rescat", c1.centerx, c1.y + 20, FONT_S, C_GOLD, center=True)
+            txt("Abella captiva", c1.centerx, c1.y + 160, FONT_S, C_TXT, center=True)
+            txt("RESCATANT" if sel else "Clica per triar-la", c1.centerx, c1.y + 190, FONT_S, (150, 230, 150) if sel else (250, 220, 130), center=True)
+            pygame.draw.rect(screen, (40, 14, 10), (c1.x + 12, c1.y + 230, c1.w - 24, 14))
+            pygame.draw.rect(screen, (170, 90, 220), (c1.x + 12, c1.y + 230, int((c1.w - 24) * (min(1.0, a * 0.1) if sel else 0.1)), 14))
+            self.btn(c1, lambda: self.tut_do("rescue"))
+            c2 = pygame.Rect(r.x + 226, r.y + 14, 196, 300)
+            self.card(c2, "legend")
+            ic = fit(IMG["enemy_frog"][0], 120, 80)
+            screen.blit(ic, ic.get_rect(center=(c2.centerx, c2.y + 80)))
+            txt("La Cau", c2.centerx, c2.y + 20, FONT_S, C_GOLD, center=True)
+            txt("Essència 12/40", c2.centerx, c2.y + 150, FONT_S, C_TXT, center=True)
+            txt("1500 mel + 12 pol", c2.centerx, c2.y + 176, FONT_S, C_TXT, center=True)
+            txt("3 min d'incubació", c2.centerx, c2.y + 200, FONT_S, (176, 166, 140), center=True)
+            txt("Aliat salvatge (tecla 7)", c2.centerx, c2.y + 240, FONT_S, (230, 150, 150), center=True)
+        elif i == 7:
+            sel = st.get("mut")
+            for k, (mk, mv) in enumerate(MUTATIONS.items()):
+                b = pygame.Rect(r.x + 20, r.y + 20 + k * 84, 400, 74)
+                self.card(b, "legend", hl=(sel == mk))
+                txt(mv["name"], b.x + 14, b.y + 8, FONT, C_GOLD)
+                txt(mv["desc"], b.x + 14, b.y + 36, FONT_S, C_TXT)
+                self.btn(b, (lambda mk=mk: self.tut_do("mut", mk)))
+            txt("Cal evolucionar l'abella (nivell 15)", cx, r.bottom - 54, FONT_S, C_TXT, center=True)
+            txt("Cost: %d mel + %d pol·len" % (MUT_MEL, MUT_POLLEN), cx, r.bottom - 30, FONT_S, (176, 166, 140), center=True)
+        elif i == 8:
+            gy = r.y + 200
+            raining = st.get("rain") and a - st["rain"] < 8.0
+            pygame.draw.rect(screen, (96, 130, 70), (r.x + 8, gy, r.w - 16, 60))
+            for k in range(4):
+                sp = 40 if raining else 80
+                x = r.x + 40 + ((a * sp + k * 100) % (r.w - 80))
+                self._walker(("honey", "bumble", "carpenter", "sweat")[k], x, gy + 56, 60, 44, rate=8 if raining else 12)
+            if raining:
+                ov = pygame.Surface((r.w - 16, r.h - 16), pygame.SRCALPHA)
+                ov.fill((30, 40, 70, 80))
+                screen.blit(ov, (r.x + 8, r.y + 8))
+                for k in range(30):
+                    px = r.x + 12 + ((k * 53 + a * 140) % (r.w - 24))
+                    py = r.y + 12 + ((k * 37 + a * 420) % (r.h - 24))
+                    pygame.draw.line(screen, (170, 190, 230), (px, py), (px - 4, py + 12))
+            b = pygame.Rect(cx - 100, r.y + 30, 200, 44)
+            button(b, C_BTN)
+            txt("Fes ploure", b.centerx, b.centery, FONT, C_DARK, center=True, shadow=False)
+            self.btn(b, lambda: self.tut_do("rain"))
+            txt("Pluja: un bàndol va més lent", cx, r.y + 100, FONT_S, C_TXT, center=True)
+            txt("Tempesta: llamps. Boira: menys abast", cx, r.y + 124, FONT_S, C_TXT, center=True)
+            txt("(només a l'exterior, mai al cap final)", cx, r.y + 148, FONT_S, (176, 166, 140), center=True)
         else:
-            items = ((lambda x, y: draw_book(x, y, 14), "Taller"), (lambda x, y: draw_gift(x, y, 13), "Missions"),
-                     (lambda x, y: draw_amber(x, y, 16, (226, 152, 40)), "Càpsules"), (lambda x, y: draw_stall(x, y, 16), "Botiga"),
-                     (lambda x, y: draw_gear(x, y, 16), "Rusc"), (lambda x, y: draw_star(x, y, 14, True), "Estrelles"))
-            for k, (fn, lab) in enumerate(items):
-                x, y = r.x + 70 + (k % 3) * 150, r.y + 80 + (k // 3) * 130
-                self.card(pygame.Rect(x - 56, y - 50, 112, 110))
-                fn(x, y - 6)
-                txt(lab, x, y + 42, FONT_S, C_TXT, center=True)
+            draw_star(cx, cy - 20, 60, True)
+            txt("Ja ho tens tot!", cx, cy + 70, FONT_M, C_GOLD, center=True)
+            txt("Clica Comença! per jugar", cx, cy + 104, FONT, C_TXT, center=True)
+            self.tut_done[self.tut_i] = True
+
+    def draw_rescue(self):
+        self.chrome("Rescat d'abelles", theme="base", back_to="base")
+        cap = list(self.sv["captured"].items())
+        if not cap:
+            txt("No tens cap abella captiva.", W // 2, 250, FONT_M, C_TXT, center=True)
+            return
+        pg_ = self.page_ctl("rpage", (len(cap) + 5) // 6)
+        tg = self.sv.get("rescue_target")
+        txt("Tria quina rescatar: només l'abella triada avança amb els enemics derrotats" if tg not in self.sv["captured"] else
+            "Rescatant: " + BEE_BY_KEY[tg]["name"] + " (clica una altra per canviar)", 24, 54, FONT, (250, 220, 130))
+        for idx, (k, prog) in enumerate(cap[pg_ * 6:(pg_ + 1) * 6]):
+            b = BEE_BY_KEY[k]
+            need = RESCUE_NEED[b["rarity"]]
+            col, row = idx % 3, idx // 3
+            r = pygame.Rect(14 + col * 326, 84 + row * 202, 318, 192)
+            self.card(r, b["rarity"], hl=(k == tg))
+            self.btn(r, (lambda k=k: self.set_rescue_target(k)))
+            cx, cy = r.centerx, r.y + 76
+            self._glow(cx, cy, 80, (170, 80, 230), 30 + 30 * (0.5 + 0.5 * math.sin(self.anim * 3 + idx)))
+            sl = fit(IMG["sil_" + k], 230, 130)
+            screen.blit(sl, sl.get_rect(center=(cx, cy)))
+            for bx_ in range(-110, 111, 22):
+                pygame.draw.line(screen, (80, 66, 96), (cx + bx_, cy - 66), (cx + bx_, cy + 66), 3)
+            pygame.draw.line(screen, (80, 66, 96), (cx - 114, cy - 66), (cx + 114, cy - 66), 5)
+            pygame.draw.line(screen, (80, 66, 96), (cx - 114, cy + 66), (cx + 114, cy + 66), 5)
+            txt(b["name"][:26], r.x + 12, r.y + 6, FONT_S, C_TXT)
+            pygame.draw.rect(screen, (40, 14, 10), (r.x + 14, r.bottom - 36, r.w - 28, 14))
+            pygame.draw.rect(screen, (170, 90, 220), (r.x + 14, r.bottom - 36, int((r.w - 28) * min(1.0, prog / need)), 14))
+            txt(f"{min(prog, need)}/{need} enemics" + ("   RESCATANT" if k == tg else ""), r.centerx, r.bottom - 14, FONT_S,
+                (150, 230, 150) if k == tg else C_GOLD, center=True)
+
+    def draw_news(self):
+        self.chrome("Notícies i esdeveniments", theme="base", back_to="base")
+        evs = sorted(news_events(), key=lambda e: (not e["active"], e["secs"]))
+        for i, e in enumerate(evs):
+            r = pygame.Rect(16, 58 + i * 106, 968, 98)
+            self.card(r, "legend" if e["active"] else None, hl=e["active"])
+            txt(e["title"], r.x + 16, r.y + 8, FONT_M, C_GOLD if e["active"] else (170, 160, 140))
+            txt(e["desc"], r.x + 16, r.y + 44, FONT, C_TXT)
+            tag = ("ACTIU - acaba en " if e["active"] else "Comença en ") + fmt_secs(e["secs"])
+            txt(tag, r.x + 16, r.y + 72, FONT_S, (150, 230, 150) if e["active"] else (200, 170, 130))
+            if e.get("bees"):
+                for k, key in enumerate(e["bees"]):
+                    ic = fit(IMG["beeicon_" + key], 74, 46)
+                    screen.blit(ic, ic.get_rect(center=(r.right - 250 + k * 80, r.y + 30)))
+            elif e["id"] == "happy":
+                screen.blit(IMG["icon_honey"], (r.right - 110, r.y + 8))
+            elif e["id"] == "weekend":
+                draw_amber(r.right - 80, r.y + 32, 24, (226, 152, 40))
+            else:
+                draw_gift(r.right - 80, r.y + 32, 20)
+            goal, need, sk = EVENT_GOALS[e["id"]]
+            if e["active"]:
+                prog = self.ev_progress(e["id"])
+                done = self.ev_key(e["id"]) in self.sv["ev_claimed"]
+                txt(f"Recompensa: skin {SKIN_NAME[sk]} - {goal} ({prog}/{need})", r.x + 330, r.y + 72, FONT_S, (250, 220, 150))
+                self.ui_button(pygame.Rect(r.right - 150, r.y + 58, 134, 32), "COBRAT" if done else "COBRA",
+                               (lambda eid=e["id"]: self.claim_event(eid)), self.ev_claimable(e["id"]), FONT_S)
+
+    def draw_skins(self):
+        self.chrome("Torres del rusc", theme="base", back_to="base")
+        for i, (k, name, how, adv) in enumerate(SKINS):
+            col, row = i % 4, i // 4
+            r = pygame.Rect(12 + col * 247, 58 + row * 214, 237, 204)
+            owned = k in self.sv["skins"]
+            self.card(r, "legend" if owned else None, hl=(self.sv.get("skin") == k))
+            img = IMG["base_hive"] if k == "classic" or ("base_hive_" + k) not in IMG else IMG["base_hive_" + k]
+            ic = fit(img, 96, 98)
+            screen.blit(ic, ic.get_rect(center=(r.centerx, r.y + 56)))
+            txt(name, r.centerx, r.y + 112, FONT, C_GOLD if owned else (150, 140, 124), center=True)
+            for j, ln in enumerate(wrap_text("Avantatge: " + adv, FONT_S, r.w - 16)[:2]):
+                txt(ln, r.centerx, r.y + 130 + j * 16, FONT_S, (150, 230, 150) if owned else (140, 150, 140), center=True)
+            if owned:
+                self.ui_button(pygame.Rect(r.x + 14, r.bottom - 40, r.w - 28, 32), "EQUIPADA" if self.sv.get("skin") == k else "Equipa",
+                               (lambda k=k: self.equip_skin(k)), self.sv.get("skin") != k, FONT_S)
+            else:
+                for j, ln in enumerate(wrap_text(how, FONT_S, r.w - 16)[:2]):
+                    txt(ln, r.centerx, r.bottom - 36 + j * 16, FONT_S, (190, 170, 140), center=True)
+
+    def draw_tame(self):
+        self.chrome("La Cau: domesticar enemics", theme="base", back_to="base")
+        if self.sv["progress"] < MAIN_STAGES:
+            txt("Derrota la Vespa Reina per desbloquejar la Cau.", W // 2, 250, FONT_M, C_TXT, center=True)
+            return
+        job = self.sv.get("tame_job")
+        r = pygame.Rect(16, 54, 968, 50)
+        self.card(r, "rare" if job else None)
+        if job:
+            left = max(0, job["end"] - _time.time())
+            tot = self.tame_secs(job["key"])
+            txt("Incubant: %s  (acaba en %s)" % (ENEMIES[job["key"]]["name"], fmt_secs(left)), r.x + 14, r.y + 6, FONT, C_GOLD)
+            pygame.draw.rect(screen, (40, 14, 10), (r.x + 14, r.y + 32, 940, 10))
+            pygame.draw.rect(screen, (170, 90, 220), (r.x + 14, r.y + 32, int(940 * (1 - left / tot)), 10))
+        else:
+            txt("Cap domesticació en curs. Reuneix essència derrotant enemics: cada tipus té la seva.", r.x + 14, r.y + 14, FONT_S, C_TXT)
+        cand = self.tame_candidates()
+        pg_ = self.page_ctl("tpage", (len(cand) + 7) // 8)
+        for idx, eid in enumerate(cand[pg_ * 8:(pg_ + 1) * 8]):
+            e = ENEMIES[eid]
+            sk = e.get("sprite", eid)
+            col, row = idx % 4, idx // 4
+            c = pygame.Rect(12 + col * 247, 112 + row * 188, 237, 180)
+            tamed = eid in self.sv["tamed"]
+            self.card(c, "legend" if self.tame_elite(eid) else "common", hl=(self.sv.get("wild") == eid))
+            ic = fit(IMG["enemy_" + sk][0], 90, 56)
+            screen.blit(ic, ic.get_rect(center=(c.x + 56, c.y + 52)))
+            txt(e["name"][:24], c.x + 8, c.y + 6, FONT_S, C_TXT)
+            have = self.sv["ess"].get(eid, 0)
+            need = self.tame_need(eid)
+            txt(f"Essència {have}/{need}" if not tamed else f"Essència {have}", c.x + 108, c.y + 34, FONT_S, C_GOLD)
+            if tamed:
+                loy = self.sv["tamed"][eid]
+                txt("Fidelitat: " + "♥" * loy + "·" * (LOYALTY_MAX - loy), c.x + 108, c.y + 54, FONT_S, (230, 120, 130))
+                self.ui_button(pygame.Rect(c.x + 8, c.y + 98, c.w - 16, 32), "EQUIPAT" if self.sv.get("wild") == eid else "Equipa com a aliat",
+                               (lambda eid=eid: self.equip_wild(eid)), loy > 0, FONT_S)
+                self.ui_button(pygame.Rect(c.x + 8, c.y + 138, c.w - 16, 32), f"Alimenta ({FEED_ESS} essència)",
+                               (lambda eid=eid: self.feed_tamed(eid)), have >= FEED_ESS and loy < LOYALTY_MAX, FONT_S)
+            else:
+                mel, pol = self.tame_cost(eid)
+                txt(f"{mel} mel + {pol} pol", c.x + 8, c.y + 98 - 18, FONT_S, C_TXT)
+                txt("%d min d'incubació" % (self.tame_secs(eid) // 60), c.x + 8, c.y + 98 - 2, FONT_S, (176, 166, 140))
+                ok = have >= need and self.sv["mel"] >= mel and self.sv["pollen"] >= pol and not job
+                self.ui_button(pygame.Rect(c.x + 8, c.y + 138, c.w - 16, 32), "Domestica", (lambda eid=eid: self.start_tame(eid)), ok, FONT_S)
 
     def draw_help(self):
         self.chrome("Com es juga", theme="base", back_to="title")
         left = [("Objectiu", ["Destrueix el niu enemic abans que", "ells destrueixin el teu rusc."]),
                 ("Abelles i diners", ["Genera abelles amb 1-6 (costen diners).", "Els diners pugen sols i en matar.", "W millora el moneder: més ingressos,", "menys recàrrega i més botí."]),
-                ("Vespa Reina", ["Si perds contra ella, les abelles que lluitin", "perden els nivells i les hauràs de rescatar", "derrotant enemics (Missions > Rescat)."]),
+                ("Vespa Reina", ["Si perds contra ella, les abelles que lluitin", "perden els nivells i les hauràs de rescatar", "derrotant enemics (botó Rescat del menú)."]),
                 ("Rols", ["Tanc: els enemics l'ataquen primer.", "Atacant: molt dany a prop.", "Tirador: de lluny i toca els voladors.", "Control: alenteix o atordeix. Suport: cura.", "3 rols diferents = +8% de vida."])]
         right = [("Trompa i habilitats", ["ESPAI: trompa de pol·len (dany a tots).", "Q: Eixam (4 abelles gratis).", "E: Cura (abelles i rusc)."]),
                  ("Voladors", ["Les abelles cos a cos fan -30% de dany als", "voladors. Les tiradores no."]),
@@ -6989,6 +7996,8 @@ class GameUI:
             tm = int(res["time"])
             txt("Has aguantat %d:%02d" % (tm // 60, tm % 60), W // 2, 124, FONT_M, C_TXT, center=True)
             bt = int(self.sv.get("surv_best", 0))
+            if res.get("surv_special"):
+                txt("Recompensa especial: totes les abelles +1 nivell!", W // 2, 196, FONT, (150, 230, 150), center=True)
             txt(("NOU RÈCORD!  " if res.get("record") else "Rècord: ") + "%d:%02d" % (bt // 60, bt % 60), W // 2, 160, FONT, (250, 236, 180), center=True)
         elif res["win"]:
             if self.stage["boss"]:
@@ -6996,11 +8005,13 @@ class GameUI:
                 txt("Has completat el joc!", W // 2, 112, FONT_B, C_GOLD, center=True)
             else:
                 txt("VICTÒRIA!", W // 2, 92, FONT_B, C_GOLD, center=True)
-            caps = ("Victòria", f"En menys de {self.stage['par']} s", "Sense disparar la trompa")
+            c2, c3 = stage_star_conds(self.stage_i) if self.stage_i >= 0 else ("time", "nocannon")
+            caps = ("Victòria", star_text(max(0, self.stage_i), c2), star_text(max(0, self.stage_i), c3))
             for k in range(3):
                 x = W // 2 - 190 + k * 190
                 draw_star(x, 168, 22, res["flags"][k])
-                txt(caps[k], x, 206, FONT_S, C_TXT if res["flags"][k] else (120, 112, 100), center=True)
+                for ln_i, ln in enumerate(wrap_text(caps[k], FONT_S, 170)[:2]):
+                    txt(ln, x, 206 + ln_i * 16, FONT_S, C_TXT if res["flags"][k] else (120, 112, 100), center=True)
         else:
             txt("DERROTA...", W // 2, 110, FONT_B, (200, 90, 80), center=True)
         lines = [f"Enemics derrotats: {res['kills']}", f"Temps: {int(res['time'])} s", f"Mel guanyada: +{res['mel']}"]
@@ -7069,6 +8080,8 @@ class GameUI:
             self.draw_play()
             if self.cont_prompt:
                 self.draw_continue()
+            elif self.surv_prompt:
+                self.draw_surv_prompt()
             elif self.paused:
                 self.draw_pause()
         elif st in ("win", "lose"):
@@ -7183,6 +8196,9 @@ def _a_burrow(g, u, t, unit, tx, ty):
 
 
 def _a_crush(g, u, t, unit, tx, ty):
+    u.dash_t = 0.25
+    g.spawn_fx("fx_ring_big", tx, u.y + 4, fps=12)
+    g.add_shake(0.3)
     g.deal(u, t, 1.8, "fx_crit")
     if unit:
         t.knock()
@@ -7279,14 +8295,37 @@ class Game(GameUI):
         self.sil_cache = {}
         self.intro_replay = False
         self.tut_i = 0
+        self.tut_state = {}
+        self.tut_done = [False] * len(TUT_CARDS)
         self.tut_replay = False
         self.quit_req = False
         self.trans = None
         self.logo = None
         self.shake = 0.0
+        self.expl = None
+        self.explosion_loss = False
+        self.shielded = False
+        self.shield_fx = 0.0
+        self.lost = 0
+        self.meta = None
+        self.butterfly_dead = False
+        self.finale_larva = False
+        self.weather = None
+        self.weather_next = 40.0
+        self.boss_cache = {}
+        self.wild = None
+        self.wild_cd = 0.0
+        self.wild_used = False
+        self.ess_gain = {}
+        self.tpage = 0
+        self.spot = set()
+        self.mut_sel = None
         self.dlg = None
         self.continues = 0
         self.cont_prompt = False
+        self.surv_prompt = False
+        self.surv_hard = False
+        self.surv15_done = self.surv20_done = False
         self.ui_floats = []
         self.hitstop = 0.0
         self.world = None
@@ -7308,7 +8347,8 @@ class Game(GameUI):
         self.cap = None
         self.result = None
         self.btn_units = [pygame.Rect(8 + i * 100, UI_Y + 10, 94, 84) for i in range(DECK_MAX)]
-        self.btn_wallet = pygame.Rect(624, UI_Y + 10, 112, 84)
+        self.btn_wild = pygame.Rect(8 + 6 * 100, UI_Y + 10, 94, 84)
+        self.btn_wallet = pygame.Rect(724, UI_Y + 10, 112, 84)
         self.btn_cannon = pygame.Rect(W - 150, UI_Y + 10, 140, 84)
         self.btn_speed = pygame.Rect(W // 2 - 62, 6, 56, 26)
         self.btn_pause = pygame.Rect(W // 2 + 6, 6, 56, 26)
@@ -7322,7 +8362,7 @@ class Game(GameUI):
         self.paused = False
         self.speed = 1
         self.confirm_reset = False
-        self.mpage = self.spage = self.upage = self.epage = self.bpage = 0
+        self.mpage = self.spage = self.upage = self.epage = self.bpage = self.rpage = 0
         rr = random.Random(4)
         self.amb = [(rr.uniform(0, W), rr.uniform(40, 400), rr.uniform(0, 6.28), rr.uniform(0.6, 1.6))
                     for _ in range(34)]
@@ -7359,7 +8399,7 @@ class Game(GameUI):
 
     def survival_stage(self):
         n = min(max(self.sv["progress"], 3), len(STAGES))
-        base = STAGES[n - 1]
+        base = [x for x in STAGES[:n] if not x["boss"]][-1]       # el niu de la Reina no es pot usar de base
         pool = []
         for s_ in STAGES[:n]:
             for k in stage_enemy_ids(s_):
@@ -7369,7 +8409,7 @@ class Game(GameUI):
                     boss=False, survival=True, cat_hp=3500 + 300 * n, bg=base["bg"], base=base["base"],
                     base_off=base["base_off"], amb=base["amb"], clouds=base["clouds"], spawns=[], events=[],
                     pool=[k for k in pool if ENEMIES[k]["reward"] < 200],
-                    minis=[k for k in pool if ENEMIES[k]["reward"] >= 200],
+                    minis=[k for k in pool if ENEMIES[k]["reward"] >= 200] + (["royal_spawn"] if self.sv["progress"] >= MAIN_STAGES else []),
                     mult0=max(1.0, base["mult"] * 0.55), amult0=max(1.0, base["amult"] * 0.7))
 
     def begin_survival(self):
@@ -7454,6 +8494,20 @@ class Game(GameUI):
         self.banner_say("Torna-ho a provar!", "levelup")
         self.save()
 
+    @property
+    def modal(self):
+        return self.cont_prompt or self.surv_prompt
+
+    def surv_exit(self):
+        self.surv_prompt = False
+        self.finish(False)
+
+    def surv_continue(self):
+        self.surv_prompt = False
+        self.surv_hard = True
+        self.banner_say("La dificultat puja de cop!", "roar")
+        self.add_shake(0.4)
+
     def decline_continue(self):
         self.cont_prompt = False
         self.finish(False)
@@ -7470,6 +8524,8 @@ class Game(GameUI):
 
     def tick_ui(self, dt):
         """Temporitzadors de la interfície (no de la batalla)."""
+        if not self.headless:
+            self.check_tame()
         if self.toast[1] > 0:
             self.toast[1] -= dt
         for f in self.ui_floats:
@@ -7525,11 +8581,11 @@ class Game(GameUI):
 
     @property
     def cannon_time(self):
-        return max(10.0, max(12.0, 25.0 - 1.5 * (self.sv["cannon"] - 1)) * (1 - 0.04 * self.hive_lv("cannon_cd")))
+        return max(13.0, max(16.0, 32.0 - 1.5 * (self.sv["cannon"] - 1)) * (1 - 0.03 * self.hive_lv("cannon_cd")) * (0.9 if self.skin_on("crystal") else 1.0))
 
     @property
     def cannon_dmg(self):
-        return 300 * (1 + 0.25 * (self.sv["cannon"] - 1)) * (1 + 0.12 * self.hive_lv("cannon_dmg"))
+        return 240 * (1 + 0.25 * (self.sv["cannon"] - 1)) * (1 + 0.12 * self.hive_lv("cannon_dmg"))
 
     def upgrade_bee(self, key):
         c = self.upg_cost(key)
@@ -7540,6 +8596,74 @@ class Game(GameUI):
             self.daily_add("upgrades")
             sfx("coin")
             self.save()
+
+    def unlock_skin(self, sk):
+        if sk in self.sv["skins"]:
+            self.sv["pollen"] += 10
+            return "pollen"
+        self.sv["skins"].append(sk)
+        return "skin"
+
+    def equip_skin(self, sk):
+        if sk in self.sv["skins"]:
+            self.sv["skin"] = sk
+            sfx("click")
+            self.save()
+
+    def skin_on(self, k):
+        return self.sv.get("skin") == k
+
+    def hive_img(self):
+        sk = self.sv.get("skin", "classic")
+        if sk != "classic" and ("base_hive_" + sk) in IMG:
+            return IMG["base_hive_" + sk]
+        return IMG["base_hive"]
+
+    def event_period(self, eid):
+        now = datetime.datetime.now()
+        iso = now.date().isocalendar()
+        if eid == "spot":
+            return str(now.date().toordinal() // 3)
+        if eid == "happy":
+            return now.date().isoformat()
+        return "%d-W%02d" % (iso[0], iso[1])
+
+    def ev_key(self, eid):
+        return "%s:%s" % (eid, self.event_period(eid))
+
+    def ev_add(self, eid, n=1):
+        k = self.ev_key(eid)
+        self.sv["ev_prog"][k] = self.sv["ev_prog"].get(k, 0) + n
+
+    def ev_progress(self, eid):
+        return min(EVENT_GOALS[eid][1], self.sv["ev_prog"].get(self.ev_key(eid), 0))
+
+    def ev_claimable(self, eid):
+        return self.ev_progress(eid) >= EVENT_GOALS[eid][1] and self.ev_key(eid) not in self.sv["ev_claimed"]
+
+    def claim_event(self, eid):
+        if not self.ev_claimable(eid):
+            return
+        self.sv["ev_claimed"].append(self.ev_key(eid))
+        sk = EVENT_GOALS[eid][2]
+        got = self.unlock_skin(sk)
+        self.ui_say("Skin: " + SKIN_NAME[sk] if got == "skin" else "Ja tenies la skin: +10 pol·len")
+        sfx("levelup")
+        self.save()
+
+    def set_mutation(self, key, m):
+        if not self.sv["evo"].get(key) or self.sv["mut"].get(key) == m:
+            return
+        if self.sv["mel"] < MUT_MEL or self.sv["pollen"] < MUT_POLLEN:
+            self.say("Et falta mel o pol·len per mutar.")
+            return
+        self.sv["mel"] -= MUT_MEL
+        self.sv["pollen"] -= MUT_POLLEN
+        self.sv["mut"][key] = m
+        self.mut_sel = None
+        self.ui_say("%s: mutació %s" % (BEE_BY_KEY[key]["name"], MUTATIONS[m]["name"]))
+        sfx("levelup")
+        self.save()
 
     def evolve(self, key):
         if self.sv["owned"].get(key, 0) < MAX_LV or self.sv["evo"].get(key):
@@ -7599,6 +8723,10 @@ class Game(GameUI):
             return len(self.sv["owned"])
         if key == "evo":
             return sum(1 for v in self.sv["evo"].values() if v)
+        if key == "tamed":
+            return len(self.sv["tamed"])
+        if key == "mut":
+            return len(self.sv["mut"])
         if key == "surv":
             return int(self.sv.get("surv_best", 0))
         return sum(self.sv["stars"].values())
@@ -7624,6 +8752,9 @@ class Game(GameUI):
         if m.get("pollen"):
             self.sv["pollen"] += m["pollen"]
             parts.append(f"{m['pollen']} pol·len")
+        if m.get("skin"):
+            got = self.unlock_skin(m["skin"])
+            parts.append("skin " + SKIN_NAME[m["skin"]] if got == "skin" else "10 pol·len")
         self.ui_say("Has rebut: " + ", ".join(parts))
         sfx("coin")
         self.save()
@@ -7650,8 +8781,10 @@ class Game(GameUI):
             self.sv["pity"][pk] = 0
         b = random.choice([x for x in BEE_UNITS if x["rarity"] == rarity])
         res = self.gain_bee(b["key"])
+        if self.event_on("weekend"):
+            self.ev_add("weekend")
         if res != "new":
-            self.sv["frag"] += FRAG_GAIN[rarity]
+            self.sv["frag"] += FRAG_GAIN[rarity] * (2 if self.event_on("weekend") else 1)
         return b["key"], res
 
     def craft_bee(self, rarity):
@@ -7773,13 +8906,17 @@ class Game(GameUI):
         self.paused = False
 
     def toggle_pause(self):
-        if self.state == "play" and not self.cont_prompt:
+        if self.state == "play" and not self.modal:
             self.paused = not self.paused
 
     def toggle_speed(self):
         self.speed = 2 if self.speed == 1 else 1
 
     def abandon(self):
+        if self.stage.get("survival") or (self.stage.get("boss") and not self.headless):
+            if self.stage.get("boss"):
+                self.paused = False
+                return self.finish(False)
         if self.stage.get("survival"):
             self.paused = False
             return self.finish(False)
@@ -7804,7 +8941,7 @@ class Game(GameUI):
         self.daytag = "day"
         self.surv_t, self.surv_boss = 2.0, 70.0
         self.cats, self.enemies = [], []
-        hp_mult = 1 + 0.10 * self.hive_lv("hp")
+        hp_mult = (1 + 0.10 * self.hive_lv("hp")) * (1.15 if self.skin_on("stone") else 1.0)
         self.cat_base = Base(CAT_BASE_X, self.stage.get("cat_hp", CAT_BASE_HP) * hp_mult, 40)
         armed = self.sv["armed"]
         self.used_items = []
@@ -7833,10 +8970,28 @@ class Game(GameUI):
         self.boss_t = dict(barrage=14.0, spawn=14.0, guard=45.0)
         self.kills = self.spawned = self.cannons_used = self.mel_earned = 0
         self.rescued_now = []
+        self.weather = None
+        self.weather_next = random.uniform(35, 70)
+        self.expl = None
+        self.explosion_loss = False
+        self.shielded = ("hp" in self.used_items) or self.headless
+        self.shield_fx = 0.0
+        self.lost = 0
+        self.meta = None
+        self.butterfly_dead = False
+        self.finale_larva = False
+        self.spot = self.spot_keys()
+        self.wild = None if self.headless else self.wild_data()
+        self.wild_cd = 0.0
+        self.wild_used = False
+        self.ess_gain = {}
         self.abil_cd = [12.0, 20.0]
         self.abil_used = 0
         self.continues = 0
         self.cont_prompt = False
+        self.surv_prompt = False
+        self.surv_hard = False
+        self.surv15_done = self.surv20_done = False
         self.t_full = 0.0
         self.air_spawned = 0
         self.shake = self.hitstop = 0.0
@@ -7850,7 +9005,7 @@ class Game(GameUI):
 
     @property
     def income(self):
-        return (16 + 6 * (self.wallet - 1)) * (1 + 0.06 * self.hive_lv("income"))
+        return (16 + 6 * (self.wallet - 1)) * (1 + 0.06 * self.hive_lv("income")) * (1.08 if self.skin_on("mill") else 1.0)
 
     @property
     def wallet_cost(self):
@@ -7863,7 +9018,7 @@ class Game(GameUI):
 
     def wallet_loot(self):
         """Cada nivell de moneder: +4% de diners per enemic derrotat."""
-        return 1.0 + 0.04 * (self.wallet - 1)
+        return (1.0 + 0.04 * (self.wallet - 1)) * (1.1 if self.skin_on("castle") else 1.0)
 
     def add_shake(self, a):
         if not self.headless and self.sv["opts"].get("flashes", True):
@@ -7873,20 +9028,46 @@ class Game(GameUI):
         return max(25.0, 50.0 - 2.5 * self.hive_lv("swarm"))
 
     def heal_cd(self):
-        return max(35.0, 70.0 - 3.5 * self.hive_lv("heal"))
+        return max(20.0, 40.0 - 2.0 * self.hive_lv("heal"))
+
+    def swarm_bee(self):
+        key = self.sv.get("swarm_key")
+        for b in self.deck:
+            if b["key"] == key:
+                return b
+        return min(self.deck, key=lambda b: b["cost"])
+
+    def swarm_count(self, b):
+        """Com més forta (cara) és l'abella triada, menys en surten. Les millores del Rusc n'afegeixen."""
+        budget = 280 + 45 * self.hive_lv("swarm")
+        return max(1, min(12, int(budget / max(1, b["cost"]))))
+
+    def cycle_swarm(self):
+        keys = [k for k in self.sv["deck"] if k in BEE_BY_KEY]
+        if not keys:
+            return
+        cur = self.sv.get("swarm_key")
+        nxt = keys[(keys.index(cur) + 1) % len(keys)] if cur in keys else keys[0]
+        self.sv["swarm_key"] = nxt
+        self.ui_say("Eixam: %s (%d abelles)" % (BEE_BY_KEY[nxt]["name"], max(1, min(12, int((280 + 45 * self.hive_lv("swarm")) / BEE_BY_KEY[nxt]["cost"])))))
+        self.save()
 
     def use_swarm(self):
         if self.abil_cd[0] > 0 or not self.deck:
             return
-        cheap = min(self.deck, key=lambda b: b["cost"])
+        room = self.bee_cap() - len(self.cats)
+        if room <= 0:
+            self.cap_notice()
+            return
+        cheap = self.swarm_bee()
         lv = self.hive_lv("swarm")
-        for k in range(4 + lv // 2):
+        for k in range(min(room, self.swarm_count(cheap))):
             d = dict(cheap)
             m = lvl_mult(self.sv["owned"].get(d["key"], 1)) * (EVO_MULT if self.sv["evo"].get(d["key"]) else 1.0)
             f = 0.8 + 0.03 * lv
             d["hp"], d["atk"], d["evo"] = cheap["hp"] * m * f, cheap["atk"] * m * f, False
             u = Unit(d, 0)
-            u.x += k * 14
+            u.x += k * 12
             self.cats.append(u)
         self.abil_cd[0] = self.swarm_cd()
         self.abil_used += 1
@@ -7898,14 +9079,38 @@ class Game(GameUI):
             return
         lv = self.hive_lv("heal")
         for a in self.cats:
-            a.hp = min(a.max, a.hp + a.max * (0.35 + 0.025 * lv))
+            a.hp = min(a.max, a.hp + a.max * (0.20 + 0.015 * lv))
             self.spawn_fx("fx_heal", a.x, a.y - a.d["hover"] - 40)
-        self.cat_base.hp = min(self.cat_base.max, self.cat_base.hp + self.cat_base.max * (0.12 + 0.01 * lv))
+        self.cat_base.hp = min(self.cat_base.max, self.cat_base.hp + self.cat_base.max * (0.08 + 0.006 * lv))
         self.abil_cd[1] = self.heal_cd()
         self.abil_used += 1
         sfx("ability")
 
+    def star_check(self, cond):
+        if cond == "time":
+            return self.time <= self.stage["par"]
+        if cond == "hp50":
+            return self.cat_base.hp >= 0.6 * self.cat_base.max
+        if cond == "few":
+            return self.spawned <= few_limit(max(0, self.stage_i))
+        if cond == "nocannon":
+            return self.cannons_used == 0
+        if cond == "noabil":
+            return self.abil_used == 0
+        if cond == "nowallet":
+            return self.wallet == 1
+        if cond == "lost":
+            return self.lost <= 15
+        if cond == "roles":
+            return len({b["role"] for b in self.deck}) >= 3
+        if cond == "commons":
+            return all(b["rarity"] != "legend" for b in self.deck)
+        return False
+
     def lose_hint(self):
+        if self.explosion_loss:
+            return ["Una explosió immensa ha arrasat el rusc i tot el camp de batalla...",
+                    "Potser calia deixar alguna protecció preparada abans de començar."]
         tips = []
         rec = self.stage.get("rec", 1)
         lvs = [self.sv["owned"].get(d["key"], 1) for d in self.deck] or [1]
@@ -7924,24 +9129,43 @@ class Game(GameUI):
             tips.append("Combina 3 rols diferents per guanyar +8% de vida.")
         return tips[:2] or ["Torna-ho a provar amb una altra combinació!"]
 
+    def cap_notice(self, reached=False):
+        if self.banner[1] <= 0.3:
+            self.banner_say(("Has arribat al màxim d'abelles (%d)!" if reached else "Màxim d'abelles al camp (%d)") % self.bee_cap(), "warn")
+
+    def bee_cap(self):
+        return MAX_BEES_SURV if self.stage.get("survival") else MAX_BEES
+
     def synergy(self):
         return len({b["role"] for b in self.deck}) >= 3
 
     def spawn_bee(self, i):
+        if i == 6:
+            return self.spawn_wild()
         if i >= len(self.deck):
             return
         d0 = self.deck[i]
+        if len(self.cats) >= self.bee_cap():
+            if self.cds[i] <= 0 and self.money >= d0["cost"]:
+                self.cap_notice()
+            return
         if self.cds[i] <= 0 and self.money >= d0["cost"]:
             self.money -= d0["cost"]
-            self.cds[i] = d0["cd"] * (1 - 0.03 * self.hive_lv("cdr")) * self.wallet_cd()
+            self.cds[i] = d0["cd"] * (1 - 0.03 * self.hive_lv("cdr")) * self.wallet_cd() * (0.94 if self.skin_on("palace") else 1.0) * MUTATIONS.get(self.sv["mut"].get(d0["key"]), {}).get("cd", 1.0)
             d = dict(d0)
             m = lvl_mult(self.sv["owned"].get(d["key"], 1))
             d["evo"] = bool(self.sv["evo"].get(d["key"]))
             if d["evo"]:
                 m *= EVO_MULT
-            d["hp"] = d0["hp"] * m * (1.08 if self.synergy() else 1.0)
-            d["atk"] = d0["atk"] * m
+            if d["key"] in self.spot:
+                m *= 1.25
+            mu = MUTATIONS.get(self.sv["mut"].get(d["key"]), {})
+            d["hp"] = d0["hp"] * m * mu.get("hp", 1.0) * (1.08 if self.synergy() else 1.0)
+            d["atk"] = d0["atk"] * m * mu.get("atk", 1.0) * (1.06 if self.skin_on("crypt") else 1.0)
+            d["speed"] = d0["speed"] * mu.get("speed", 1.0)
             self.cats.append(Unit(d, 0))
+            if len(self.cats) >= self.bee_cap():
+                self.cap_notice(True)
             self.spawned += 1
             self.spawned_by[d["key"]] = self.spawned_by.get(d["key"], 0) + 1
             sfx("buzz")
@@ -7972,7 +9196,7 @@ class Game(GameUI):
             for e in self.enemies:
                 e.damage(self.cannon_dmg)
                 e.knock()
-            self.enemy_base.damage(self.cannon_dmg)
+                e.kb_t, e.kb_v = 0.7, 950.0          # empeny els enemics molt enrere
             self.spawn_fx("fx_hit", self.enemy_base.x, GROUND - 50)
             self.add_shake(0.5)
             sfx("cannon")
@@ -8055,8 +9279,12 @@ class Game(GameUI):
                     t.poison_t, t.poison_dps, t.pfx_name = 3.0, u.d["atk"] * 0.25, "fx_poison"
             elif s == "tongue":
                 self.deal(u, t, 1.0, "fx_hit_r")
-                if unit:
-                    t.x += -u.dir * 42
+                if unit and t.hp > 0:                              # la llengua atrau l'objectiu cap a la granota
+                    gap = abs(t.x - u.x) - u.r - t.r
+                    pull = max(0.0, min(gap, 150.0))
+                    t.x += (u.x - t.x) / max(1.0, abs(u.x - t.x)) * pull
+                    t.stun_t = max(t.stun_t, 0.45)
+                    t.kb_t = 0.0
             else:
                 self.deal(u, t, 1.0, "fx_hit_g")
                 if unit:
@@ -8161,12 +9389,25 @@ class Game(GameUI):
         st = self.stage
         if st.get("survival"):
             t = self.time
-            st["mult"] = st["mult0"] * (1 + t / 100.0)
-            st["amult"] = st["amult0"] * (1 + t / 220.0)
-            st["cap"] = min(18, 9 + int(t // 60))
+            hard = (1.6 if self.surv_hard else 1.0) * (1.7 if t >= 1200 else 1.0)
+            st["mult"] = st["mult0"] * (1 + t / 100.0) * hard
+            st["amult"] = st["amult0"] * (1 + t / 220.0) * (1 + (hard - 1) * 0.5)
+            st["cap"] = min(18, 9 + int(t // 60)) + (6 if t >= 1200 else 0)
+            if t >= 900 and not self.surv15_done:
+                self.surv15_done = True
+                self.surv_prompt = True
+                sfx("warn")
+            if t >= 1200 and not self.surv20_done:
+                self.surv20_done = True
+                for k in self.sv["owned"]:
+                    if self.sv["owned"][k] < MAX_LV:
+                        self.sv["owned"][k] += 1
+                self.save()
+                self.banner_say("MINUT 20! Totes les abelles +1 nivell. Ara és MOLT DIFÍCIL!", "roar")
+                self.add_shake(0.5)
             self.surv_t -= dt
             if self.surv_t <= 0 and len(self.enemies) < st["cap"]:
-                self.surv_t = max(1.1, 5.0 - t / 70.0)
+                self.surv_t = max(0.7 if t >= 1200 else 1.1, 5.0 - t / 70.0)
                 self.spawn_enemy(random.choice(st["pool"]))
             self.surv_boss -= dt
             if self.surv_boss <= 0:
@@ -8235,6 +9476,90 @@ class Game(GameUI):
             self.parts.append([x, y, math.cos(a) * s, math.sin(a) * s - 40,
                                random.uniform(0.4, 0.8), random.uniform(3, 6), col])
 
+    # ---- La Cau: domesticar enemics (procés llarg i car) i aliat salvatge
+    def tame_elite(self, eid):
+        return ENEMIES[eid]["reward"] >= 200
+
+    def tame_need(self, eid):
+        return 100 if self.tame_elite(eid) else 40
+
+    def tame_cost(self, eid):
+        return (6000, 40) if self.tame_elite(eid) else (1500, 12)
+
+    def tame_secs(self, eid):
+        return 600 if self.tame_elite(eid) else 180
+
+    def tame_candidates(self):
+        return [k for k in bestiary_order() if k in self.sv["seen"] and k != "hornet_guard"]
+
+    def start_tame(self, eid):
+        if self.sv["progress"] < MAIN_STAGES or self.sv.get("tame_job") or eid in self.sv["tamed"]:
+            return
+        mel, pol = self.tame_cost(eid)
+        if self.sv["ess"].get(eid, 0) < self.tame_need(eid) or self.sv["mel"] < mel or self.sv["pollen"] < pol:
+            self.say("Et falta essència, mel o pol·len.")
+            return
+        self.sv["ess"][eid] -= self.tame_need(eid)
+        self.sv["mel"] -= mel
+        self.sv["pollen"] -= pol
+        self.sv["tame_job"] = {"key": eid, "end": _time.time() + self.tame_secs(eid)}
+        self.ui_say("Incubant " + ENEMIES[eid]["name"])
+        sfx("magic")
+        self.save()
+
+    def check_tame(self):
+        job = self.sv.get("tame_job")
+        if job and _time.time() >= job["end"]:
+            self.sv["tamed"][job["key"]] = LOYALTY_MAX
+            self.sv["tame_job"] = None
+            self.ui_say("Has domesticat: " + ENEMIES[job["key"]]["name"] + "!")
+            sfx("levelup")
+            self.save()
+
+    def feed_tamed(self, eid):
+        if self.sv["ess"].get(eid, 0) >= FEED_ESS and eid in self.sv["tamed"]:
+            self.sv["ess"][eid] -= FEED_ESS
+            self.sv["tamed"][eid] = LOYALTY_MAX
+            sfx("coin")
+            self.save()
+
+    def equip_wild(self, eid):
+        if self.sv["tamed"].get(eid, 0) > 0:
+            self.sv["wild"] = None if self.sv.get("wild") == eid else eid
+            self.save()
+
+    def wild_data(self):
+        k = self.sv.get("wild")
+        if not k or self.sv["tamed"].get(k, 0) <= 0:
+            return None
+        e = ENEMIES[k]
+        d = dict(e)
+        d.update(key="wild_" + k, id=k, cost=int(round((e["reward"] * 4 + e["hp"] / 6) / 5.0) * 5), cd=20.0 + e["hp"] / 500.0,
+                 hp=e["hp"] * 0.75, atk=e["atk"] * 0.75, role="Salvatge", tank=False, air=bool(e["ranged"] or e["hover"] >= 30), evo=False)
+        return d
+
+    def spawn_wild(self):
+        d = self.wild
+        if not d or self.wild_cd > 0 or self.money < d["cost"]:
+            return
+        if len(self.cats) >= self.bee_cap():
+            self.cap_notice()
+            return
+        sp = d.get("sprite", d["id"])
+        if not self.headless and "tamed_" + sp not in IMG:
+            IMG["tamed_" + sp] = [pygame.transform.flip(f, True, False) for f in IMG["enemy_" + sp]]
+        self.money -= d["cost"]
+        self.wild_cd = d["cd"]
+        self.cats.append(Unit(dict(d), 0))
+        self.wild_used = True
+        sfx("roar", 0.5)
+
+    def set_rescue_target(self, key):
+        if key in self.sv["captured"]:
+            self.sv["rescue_target"] = key
+            self.ui_say("Rescatant: " + BEE_BY_KEY[key]["name"])
+            self.save()
+
     def capture_deck(self):
         """Derrota final: les abelles que han lluitat perden tots els nivells i queden captives."""
         keys = [d["key"] for d in self.deck]
@@ -8250,13 +9575,27 @@ class Game(GameUI):
         self.sv["deck"] = [k for k in self.sv["deck"] if k in self.sv["owned"]] or list(self.sv["owned"])[:3]
 
     def record_stats(self):
-        for k in list(self.sv["captured"]):
-            self.sv["captured"][k] += self.kills
-            if self.sv["captured"][k] >= RESCUE_NEED[BEE_BY_KEY[k]["rarity"]]:
-                self.sv["captured"].pop(k)
-                self.gain_bee(k)
-                self.rescued_now.append(k)
-                self.ui_say("Has rescatat " + BEE_BY_KEY[k]["name"] + "!")
+        for k_, n_ in self.ess_gain.items():
+            self.sv["ess"][k_] = self.sv["ess"].get(k_, 0) + n_
+        self.sv["stats"]["royal_kills"] = self.sv["stats"].get("royal_kills", 0) + self.ess_gain.get("royal_spawn", 0)
+        self.ess_gain = {}
+        if self.wild_used and self.sv.get("wild") in self.sv["tamed"]:
+            w_ = self.sv["wild"]
+            self.sv["tamed"][w_] = max(0, self.sv["tamed"][w_] - 1)
+            if self.sv["tamed"][w_] <= 0:
+                self.sv["wild"] = None
+                self.ui_say("%s està cansat: alimenta'l a la Cau" % ENEMIES[w_]["name"])
+        self.wild_used = False
+        tgt = self.sv.get("rescue_target")
+        if tgt in self.sv["captured"]:                       # només es rescata l'abella triada
+            self.sv["captured"][tgt] += self.kills
+            if self.sv["captured"][tgt] >= RESCUE_NEED[BEE_BY_KEY[tgt]["rarity"]]:
+                self.sv["captured"].pop(tgt)
+                self.gain_bee(tgt)
+                self.rescued_now.append(tgt)
+                self.sv["rescue_target"] = None
+                self.sv["stats"]["rescued"] = self.sv["stats"].get("rescued", 0) + 1
+                self.ui_say("Has rescatat " + BEE_BY_KEY[tgt]["name"] + "! Tria la següent.")
         st = self.sv["stats"]
         st["kills"] += self.kills
         st["spawned"] += self.spawned
@@ -8276,7 +9615,7 @@ class Game(GameUI):
         i = self.stage_i
         if win:
             mel += int(STAGE_REWARD[i][0] * (1 + 0.05 * self.hive_lv("reward")))
-            flags = [True, tm <= self.stage["par"], self.cannons_used == 0]
+            flags = [True] + [self.star_check(c_) for c_ in stage_star_conds(i)]
             stars = sum(flags)
             prev = self.sv["stars"].get(str(i), 0)
             if self.sv["progress"] < i + 1:
@@ -8294,11 +9633,19 @@ class Game(GameUI):
             mel = int(mel * 1.25)
         if win and ev == "pollen":
             pol += 1
+        if self.event_on("happy"):
+            mel = int(mel * 1.4)
+        if win and not self.headless:
+            self.ev_add("week")
+            if self.event_on("happy"):
+                self.ev_add("happy")
+            if any(d["key"] in self.spot for d in self.deck):
+                self.ev_add("spot")
         if survival and kills > self.sv.get("surv_kills", 0):
             self.sv["surv_kills"] = kills
         if survival:
             mel += int(tm * 3)
-            pol += int(tm // 150)
+            pol += int(tm // 150) + (10 if tm >= 900 else 0)
             if tm > self.sv.get("surv_best", 0):
                 self.sv["surv_best"] = tm
                 record = True
@@ -8315,12 +9662,15 @@ class Game(GameUI):
         self.sv["pollen"] += pol
         self.result = dict(win=win, mel=mel, pollen=pol, kills=kills, time=tm, flags=flags, dmg=dmg_list,
                            survival=survival, record=record,
-                           hints=[] if win else self.lose_hint(), rescued=list(self.rescued_now))
-        if self.stage.get("boss") and not survival and not self.headless:
-            if not win:
+                           hints=[] if win else self.lose_hint(), rescued=list(self.rescued_now),
+                           surv_special=bool(survival and self.surv20_done))
+        if win and self.stage.get("boss") and "royal_spawn" not in self.sv["seen"]:
+            self.sv["seen"].append("royal_spawn")
+        if not survival and not self.headless and (self.stage.get("boss") or (self.stage.get("finale") and win)):
+            if self.stage.get("boss") and not win:
                 self.capture_deck()
             self.save()
-            self.start_story("win" if win else "lose")
+            self.start_story("finale" if self.stage.get("finale") else ("win" if win else "lose"))
             return
         self.state = "win" if win else "lose"
         if not self.headless:
@@ -8329,13 +9679,88 @@ class Game(GameUI):
         sfx("win" if win else "lose")
         self.save()
 
+    def start_meta(self, x, y):
+        self.meta = dict(t=0.0, x=x, y=y, spawned=False)
+        self.banner_say("LA LARVA REINA ES TRANSFORMA!", "roar")
+        self.add_shake(0.5)
+
+    def butterfly_blast(self, x, y):
+        """La Larva Reina esclata en convertir-se en papallona: arrasa tot el mapa si el rusc no està protegit."""
+        self.flash = 0.7
+        self.add_shake(1.0)
+        sfx("boom")
+        if self.shielded:
+            self.shield_fx = 2.0
+            self.banner_say("L'escut ha absorbit l'explosió!", "levelup")
+            sfx("levelup")
+            return
+        keep = [e for e in self.enemies if e.d["id"] == "royal_butterfly"]
+        for u in list(self.cats) + [e for e in self.enemies if e.d["id"] != "royal_butterfly"]:
+            self.add_dying(u)
+            u.hp = 0
+        self.cats, self.enemies = [], keep
+        self.cat_base.hp = 0
+        self.explosion_loss = True
+        self.expl = dict(t=0.0, x=x, y=y)
+        sfx("roar")
+
+    def update_vfx(self, dt):
+        for p in self.parts:
+            p[0] += p[2] * dt
+            p[1] += p[3] * dt
+            p[3] += 120 * dt
+            p[4] -= dt
+        self.parts = [p for p in self.parts if p[4] > 0]
+        for dd in self.dying:
+            dd["t"] += dt
+            dd["x"] += dd["vx"] * dt
+            dd["y"] += dd["vy"] * dt
+            dd["vy"] += 620 * dt
+            dd["rot"] += dd["rv"] * dt
+        self.dying = [dd for dd in self.dying if dd["t"] < 0.75]
+
+    def update_expl(self, dt):
+        e = self.expl
+        e["t"] += dt
+        self.shake = max(self.shake, 0.9 * max(0.0, 1 - e["t"] / 2.2))
+        self.update_vfx(dt)
+        if e["t"] < 0.2 or (e["t"] * 20) % 1 < dt * 20:
+            for _ in range(2):
+                self.puff(e["x"] + random.uniform(-200, 200), e["y"] + random.uniform(-120, 60), random.choice(((255, 200, 80), (255, 120, 40), (250, 250, 230))), 6)
+        if e["t"] >= 2.4:
+            self.expl = None
+            self.finish(False)
+
+    def update_meta(self, dt):
+        m = self.meta
+        m["t"] += dt
+        self.banner[1] = max(self.banner[1], 0.5)
+        self.shake = max(self.shake, 0.15)
+        for f in self.fx:
+            f["t"] += dt
+        if m["t"] >= 2.4 and not m["spawned"]:
+            m["spawned"] = True
+            self.spawn_enemy("royal_butterfly")
+            self.enemies[-1].x = min(ENEMY_BASE_X - 40, m["x"])
+            self.butterfly_blast(m["x"], m["y"])
+        if m["t"] >= 3.4:
+            self.meta = None
+
     def update(self, dt):
+        if self.expl:
+            self.update_expl(dt)
+            return
+        if self.meta:
+            self.update_meta(dt)
+            return
+        self.shield_fx = max(0.0, self.shield_fx - dt)
         self.time += dt
         self.shake = max(0.0, self.shake - dt * 1.6)
         self.abil_cd = [max(0.0, c - dt) for c in self.abil_cd]
+        self.wild_cd = max(0.0, self.wild_cd - dt)
         if self.money >= 0.95 * self.max_money:
             self.t_full += dt
-        tag = "night" if (night_amount(self.time) > 0.6 or self.stage.get("night")) else "day"
+        tag = "night" if self.night_allowed() and (night_amount(self.time) > 0.6 or self.stage.get("night")) else "day"
         if tag != self.daytag:
             self.daytag = tag
             if not self.headless:
@@ -8346,8 +9771,9 @@ class Game(GameUI):
         self.cannon_vis = max(0, self.cannon_vis - dt)
         self.kick = max(0.0, self.kick - dt)
         rg = self.hive_lv("regen")
-        if rg and self.cat_base.hp > 0:
-            self.cat_base.hp = min(self.cat_base.max, self.cat_base.hp + self.cat_base.max * 0.0015 * rg * dt)
+        if (rg or self.skin_on("tree")) and self.cat_base.hp > 0:
+            rate = 0.0002 * rg + (0.0004 if self.skin_on("tree") else 0.0)
+            self.cat_base.hp = min(self.cat_base.max, self.cat_base.hp + self.cat_base.max * rate * dt)
 
         for s, st in zip(self.stage["spawns"], self.spawn):
             if self.time >= st["t"] and st["n"] < s[3] and len(self.enemies) < self.stage["cap"]:
@@ -8355,6 +9781,7 @@ class Game(GameUI):
                 st["n"] += 1
                 st["t"] = self.time + s[2]
         self.update_level(dt)
+        self.update_weather(dt)
 
         for u in self.cats + self.enemies:
             u.update(self, dt)
@@ -8374,17 +9801,23 @@ class Game(GameUI):
 
         for u in self.cats:
             if u.hp <= 0:
+                self.lost += 1
                 self.puff(u.x, u.y - 25, (196, 170, 90))
                 self.add_dying(u)
                 sfx("die", 0.6)
         for e in self.enemies:
             if e.hp <= 0:
                 self.add_dying(e)
+                if e.d["id"] == "royal_larva":
+                    self.start_meta(e.x, e.y)
+                if e.d["id"] == "royal_butterfly":
+                    self.butterfly_dead = True
                 if e.d["reward"] >= 200:
                     self.add_shake(0.4)
                     self.hitstop = max(self.hitstop, 0.08)
                 self.money = min(self.max_money, self.money + e.d["reward"] * (1 + 0.08 * self.hive_lv("bounty")) * self.wallet_loot())
                 self.kills += 1
+                self.ess_gain[e.d["id"]] = self.ess_gain.get(e.d["id"], 0) + 1
                 self.mel_earned += max(1, e.d["reward"] // 2)
                 if e.d["id"] not in self.sv["seen"]:
                     self.sv["seen"].append(e.d["id"])
@@ -8394,9 +9827,9 @@ class Game(GameUI):
         self.cats = [c for c in self.cats if c.hp > 0]
         self.enemies = [e for e in self.enemies if e.hp > 0]
         for u in self.cats:
-            u.x = max(CAT_BASE_X, u.x)
+            u.x = max(CAT_BASE_X, min(ENEMY_BASE_X - 50, u.x))
         for u in self.enemies:
-            u.x = min(ENEMY_BASE_X, u.x)
+            u.x = min(ENEMY_BASE_X, max(CAT_BASE_X + 20, u.x))
 
         for p in self.parts:
             p[0] += p[2] * dt
@@ -8432,6 +9865,13 @@ class Game(GameUI):
             f["t"] += dt
         self.fx = [f for f in self.fx if int(f["t"] * f["fps"]) < len(IMG[f["name"]])]
 
+        if self.stage.get("finale") and not self.butterfly_dead:
+            if self.enemy_base.hp <= 0:
+                self.enemy_base.hp = 1
+                if not self.finale_larva and not any(e.d["id"] in ("royal_larva", "royal_butterfly") for e in self.enemies):
+                    self.finale_larva = True
+                    self.banner_say("LA LARVA REINA!", "roar")
+                    self.spawn_enemy("royal_larva")
         if self.enemy_base.hp <= 0:
             self.finish(True)
         elif self.cat_base.hp <= 0:
@@ -8442,6 +9882,77 @@ class Game(GameUI):
                 self.finish(False)
 
     # ------------------------------------------------- RUSC, BOTIGA, DIÀRIES
+    def weather_ok(self):
+        return (not self.headless) and self.night_allowed()
+
+    def weather_speed(self, side):
+        w = self.weather
+        if not w:
+            return 1.0
+        if w["kind"] == "rain":
+            return 0.7 if side == w["side"] else 1.0
+        if w["kind"] == "storm":
+            return 0.85
+        return 1.0
+
+    def weather_range(self):
+        w = self.weather
+        return 0.6 if (w and w["kind"] == "fog") else 1.0
+
+    def start_weather(self):
+        kind = random.choice(("rain", "rain", "storm", "fog"))
+        side = random.choice((0, 1))
+        self.weather = dict(kind=kind, side=side, t=0.0, dur=random.uniform(20, 35), bolt=3.0)
+        if kind == "rain":
+            self.banner_say("Plou! " + ("Les abelles van més lentes" if side == 0 else "Els enemics van més lents"), "warn")
+        elif kind == "storm":
+            self.banner_say("Tempesta! Pluja i llamps", "roar")
+        else:
+            self.banner_say("Boira: els atacs a distància arriben menys lluny", "warn")
+
+    def update_weather(self, dt):
+        if not self.weather_ok():
+            return
+        w = self.weather
+        if w:
+            w["t"] += dt
+            if w["kind"] == "storm":
+                w["bolt"] -= dt
+                if w["bolt"] <= 0:
+                    w["bolt"] = random.uniform(3.5, 6.5)
+                    self.add_marker(random.uniform(230, ENEMY_BASE_X - 130), "lightning", 110)
+            if w["t"] >= w["dur"]:
+                self.weather = None
+                self.weather_next = random.uniform(45, 90)
+                self.banner_say("El temps millora", "magic")
+        else:
+            self.weather_next -= dt
+            if self.weather_next <= 0:
+                if random.random() < 0.4:
+                    self.start_weather()
+                else:
+                    self.weather_next = random.uniform(30, 60)
+
+    def night_allowed(self):
+        st = self.stage
+        return not (st.get("boss") or st["bg"] in INDOOR_BG)
+
+    def active_events(self):
+        return [e for e in news_events() if e["active"]]
+
+    def event_on(self, eid):
+        if self.headless:
+            return False
+        return any(e["id"] == eid and e["active"] for e in news_events())
+
+    def spot_keys(self):
+        if self.headless:
+            return set()
+        for e in news_events():
+            if e["id"] == "spot":
+                return set(e["bees"])
+        return set()
+
     def hive_lv(self, key):
         return self.sv["hive"].get(key, 0)
 
@@ -8662,6 +10173,7 @@ def run_simulation(argv):
         return default
     runs, only, lv_over = arg("--runs", 5), arg("--stage", 0), arg("--lv", 0)
     legends = "--legends" in argv
+    hive_n = arg("--hive", 0)
     clear = {m["val"]: m["bee"] for m in MISSIONS if m["kind"] == "stage" and m.get("bee")}
     print("Nivell                          Nv  Victòries  Temps mitjà  Equip")
     for si, s in enumerate(STAGES):
@@ -8675,7 +10187,9 @@ def run_simulation(argv):
         tanks = sorted([k for k in own if k not in top], key=lambda k: -BEE_BY_KEY[k]["hp"])
         if tanks:
             top.append(tanks[0])
-        deck = sorted(top[:5], key=lambda k: -BEE_BY_KEY[k]["cost"])
+        if hive_n and len(tanks) > 1:
+            top.append(tanks[1])
+        deck = sorted(top[:6 if hive_n else 5], key=lambda k: -BEE_BY_KEY[k]["cost"])
         lv = lv_over or s["rec"]
         wins, tsum = 0, 0.0
         for run in range(runs):
@@ -8685,7 +10199,10 @@ def run_simulation(argv):
             if si >= 17 or "--evo" in argv:
                 g.sv["evo"] = {k: True for k in own}
             g.sv["deck"] = deck
-            g.sv["cannon"] = min(MAX_CANNON, 1 + lv // 2)
+            if hive_n:
+                g.sv["hive"] = {u["id"]: hive_n for u in HIVE_UPG}
+                g.sv["slot6"] = True
+            g.sv["cannon"] = MAX_CANNON if hive_n else min(MAX_CANNON, 1 + lv // 2)
             g.start(si)
             for _ in range(int(900 / STEP)):
                 if g.wallet < 5:
@@ -8737,18 +10254,7 @@ def loading_screen(frac, label):
     pygame.event.pump()
 
 
-# Pygbag: el display s'ha d'inicialitzar abans d'entrar a asyncio.run(main()).
-# Això permet que SDL/Emscripten creï el canvas abans que comenci la coroutine.
-if WEB:
-    try:
-        pygame.mixer.pre_init(SR, -16, 1, 512, allowedchanges=0)
-    except TypeError:
-        pygame.mixer.pre_init(SR, -16, 1, 512)
-    pygame.init()
-    init_display()
-
-
-async def main():
+def main():
     global IMG
     argv = sys.argv
     if "--simulate" in argv:
@@ -8757,13 +10263,12 @@ async def main():
     if "--export" in argv:
         export_sprites()
         return
-    if not WEB:
-        try:
-            pygame.mixer.pre_init(SR, -16, 1, 512, allowedchanges=0)
-        except TypeError:
-            pygame.mixer.pre_init(SR, -16, 1, 512)
-        pygame.init()
-        init_display()
+    try:
+        pygame.mixer.pre_init(SR, -16, 1, 512, allowedchanges=0)
+    except TypeError:
+        pygame.mixer.pre_init(SR, -16, 1, 512)
+    pygame.init()
+    init_display()
     make_fonts(False)
     IMG = load_images(lambda fr: loading_screen(fr, "Generant sprites..."))
     audio_init(get_audio(lambda fr: loading_screen(fr, "Generant so i música...")))
@@ -8812,7 +10317,7 @@ async def main():
                         g.dlg_advance()
                     elif g.state == "dialogue" and ev.key == pygame.K_ESCAPE:
                         g.dlg_skip_all()
-                    elif g.state == "play" and not g.paused and not g.cont_prompt:
+                    elif g.state == "play" and not g.paused and not g.modal:
                         if ev.key in KEYS:
                             g.spawn_bee(KEYS.index(ev.key))
                         elif ev.key == pygame.K_w:
@@ -8831,7 +10336,7 @@ async def main():
                     elif g.state == "dialogue":
                         if not g.click(ev.pos):
                             g.dlg_advance()
-                    elif g.state == "play" and not g.paused and not g.cont_prompt:
+                    elif g.state == "play" and not g.paused and not g.modal:
                         if g.btn_speed.collidepoint(ev.pos):
                             g.toggle_speed()
                         elif g.btn_pause.collidepoint(ev.pos):
@@ -8839,6 +10344,8 @@ async def main():
                         for i, r in enumerate(g.btn_units):
                             if r.collidepoint(ev.pos):
                                 g.spawn_bee(i)
+                        if g.wild and g.btn_wild.collidepoint(ev.pos):
+                            g.spawn_bee(6)
                         if g.btn_wallet.collidepoint(ev.pos):
                             g.upgrade_wallet()
                         if g.btn_cannon.collidepoint(ev.pos):
@@ -8858,12 +10365,12 @@ async def main():
                             if g.state == "intro":
                                 g.intro_advance()
                             else:
-                                g.tut_step(1)
+                                g.tut_bg_click()
                     else:
                         g.click(ev.pos)
-            if g.state == "play" and not g.paused and not g.trans and not g.cont_prompt and g.hitstop > 0:
+            if g.state == "play" and not g.paused and not g.trans and not g.modal and g.hitstop > 0:
                 g.hitstop -= dt
-            elif g.state == "play" and not g.paused and not g.trans and not g.cont_prompt:
+            elif g.state == "play" and not g.paused and not g.trans and not g.modal:
                 acc += dt * g.speed
                 n = 0
                 while acc >= STEP and n < 6 and g.state == "play":
@@ -8881,11 +10388,10 @@ async def main():
                 music_play(MUSIC_BY_BG.get(g.stage["bg"], "calm") if g.state in ("play", "win", "lose") else "calm")
             g.draw()
             pygame.display.flip()
-            await asyncio.sleep(0)
     finally:
         g.save()
         pygame.quit()
 
 
 if __name__ == "__main__":
-     asyncio.run(main())
+    main()
