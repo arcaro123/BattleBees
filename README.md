@@ -1,8 +1,12 @@
 # The BattleBees 🐝
 
 Joc d'estratègia en temps real estil *Battle Cats*, fet amb **Pygame**, on defenses el teu rusc contra
-exèrcits d'insectes. Tot el joc (codi, dibuixos i so) està en un sol fitxer: `main.py`.
-Els sprites i el so es generen per codi la primera vegada que s'obre.
+exèrcits d'insectes.
+
+## ▶ Juga-hi al navegador
+**https://arcaro123.github.io/BattleBees/**
+
+(La primera càrrega pot trigar uns segons. La partida es desa al navegador.)
 
 ## Característiques
 - 30 nivells (24 de campanya fins a la **Vespa Reina** + 6 de post-joc) i mode **Supervivència** infinit
@@ -11,16 +15,13 @@ Els sprites i el so es generen per codi la primera vegada que s'obre.
 - Torres del rusc amb avantatges, habilitats (Eixam i Cura), trompa de pol·len
 - Història animada, tutorial interactiu, rescat d'abelles i La Cau per domesticar enemics
 
-## Com jugar-hi
+## Com jugar-hi a l'ordinador
 Cal Python 3.10 o superior.
 
 ```bash
 pip install -r requirements.txt
 python main.py
 ```
-
-La primera vegada triga uns segons a generar els sprites i el so (després queden desats a la carpeta
-`.bee_battle` de l'usuari, amb la partida).
 
 ### Controls a la batalla
 | Tecla | Acció |
@@ -33,6 +34,10 @@ La primera vegada triga uns segons a generar els sprites i el so (després quede
 | Esc o P | Pausa |
 | F11 | Pantalla completa |
 
-## Opcions de la línia d'ordres
-- `python main.py --export` guarda tots els sprites a `./sprites/`
-- `python main.py --simulate --runs 5 --stage 10 --lv 8` simula un nivell sense gràfics (equilibri)
+## Per a qui edita el codi
+- `python main.py --simulate --runs 5 --stage 10 --lv 8` simula un nivell sense gràfics (equilibri).
+- `python main.py --export` guarda tots els sprites a `./sprites/`.
+- **`python main.py --bake`** regenera `assets/sprites.bin` i `assets/sounds.bin`. La versió web no pot
+  generar sprites (no té Pillow), així que carrega aquests fitxers: **torna'ls a generar i puja'ls cada cop
+  que canviïs els dibuixos o el so.**
+- A cada `push` a `main`, GitHub Actions compila la versió web i la publica a la branca `gh-pages`.
