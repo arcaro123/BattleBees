@@ -1,0 +1,27 @@
+name: Versió web (pygbag)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compilar a WebAssembly
+        run: |
+          pip install pygbag
+          python -m pygbag --build --app_name BattleBees --title "The BattleBees" .
+      - name: Publicar a GitHub Pages (branca gh-pages)
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: build/web
+          branch: gh-pages
