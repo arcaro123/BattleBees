@@ -34,6 +34,7 @@ import zlib
 
 import pygame
 import asyncio
+import traceback
 try:
     from PIL import Image, ImageDraw  # pip install pillow (només cal per generar els sprites)
     HAS_PIL = True
@@ -4953,26 +4954,53 @@ def white_mask(img):
     return m.to_surface(setcolor=(255, 255, 255, 170), unsetcolor=(0, 0, 0, 0))
 
 
-def load_images(progress=None):
-    spr = get_sprites(progress=progress)
+def load_images_iter(progress=None, out=None):
+    """Generador: carrega els sprites per trossos i va donant la fracció feta (així el navegador no es queda penjat)."""
+    spr = {}
+    if not HAS_PIL:
+        with open(_asset_path("sprites.bin"), "rb") as f:
+            data = pickle.load(f)
+        items = list(data["imgs"].items())
+        for i, (k, v) in enumerate(items):
+            spr[k] = _unpack(v)
+            if i % 20 == 0:
+                yield 0.45 * i / max(1, len(items))
+    else:
+        spr = get_sprites(progress=progress)
     img = {}
-    for b in BEE_UNITS:
+    for n_, b in enumerate(BEE_UNITS):
         k = b["key"]
         fr = [surf(f) for f in spr["ally_" + k]]
         img["ally_" + k] = fr
         img["beeicon_" + k] = fr[0]
         m = pygame.mask.from_surface(fr[0])
         img["sil_" + k] = m.to_surface(setcolor=(18, 14, 12, 255), unsetcolor=(0, 0, 0, 0))
-    for k in sorted({e.get("sprite", n) for n, e in ENEMIES.items()}):
+        if n_ % 2 == 0:
+            yield 0.45 + 0.2 * n_ / len(BEE_UNITS)
+    keys = sorted({e.get("sprite", n) for n, e in ENEMIES.items()})
+    for n_, k in enumerate(keys):
         fr = [pygame.transform.flip(surf(f), True, False) for f in spr["enemy_" + k]]
         img["enemy_" + k] = fr
         m = pygame.mask.from_surface(fr[0])
         img["esil_" + k] = m.to_surface(setcolor=(18, 14, 12, 255), unsetcolor=(0, 0, 0, 0))
-    for n, v in spr.items():
-        if n.startswith(("ally_", "enemy_")):
-            continue
+        if n_ % 3 == 0:
+            yield 0.65 + 0.15 * n_ / len(keys)
+    rest = [(n, v) for n, v in spr.items() if not n.startswith(("ally_", "enemy_"))]
+    for n_, (n, v) in enumerate(rest):
         img[n] = [surf(f) for f in v] if isinstance(v, list) else surf(v)
-    return img
+        if n_ % 15 == 0:
+            yield 0.8 + 0.2 * n_ / max(1, len(rest))
+    if out is None:
+        out = {}
+    out.update(img)
+    yield 1.0
+
+
+def load_images(progress=None):
+    out = {}
+    for _ in load_images_iter(progress, out):
+        pass
+    return out
 
 
 class HeadlessImg(dict):
@@ -10329,6 +10357,44 @@ def loading_screen(frac, label):
     pygame.event.pump()
 
 
+async def show_error(text):
+    """Al navegador no hi ha consola visible: mostra l'error a la pantalla perquè es pugui llegir."""
+    print(text)
+    try:
+        scr = pygame.display.get_surface() or pygame.display.set_mode((W, H))
+        f = pygame.font.Font(None, 20)
+        lines = []
+        for ln in text.splitlines():
+            while len(ln) > 118:
+                lines.append(ln[:118])
+                ln = ln[118:]
+            lines.append(ln)
+        lines = lines[-26:]
+        scr.fill((60, 10, 10))
+        t = pygame.font.Font(None, 28).render("S'ha produït un error (envia'l a qui fa el joc):", True, (255, 220, 160))
+        scr.blit(t, (14, 10))
+        for i, ln in enumerate(lines):
+            scr.blit(f.render(ln, True, (255, 255, 255)), (14, 44 + i * 18))
+        pygame.display.flip()
+    except Exception:
+        pass
+    while True:
+        try:
+            pygame.event.pump()
+        except Exception:
+            pass
+        await asyncio.sleep(0.2)
+
+
+async def main_async():
+    try:
+        await _main_inner()
+    except Exception:
+        if not WEB:
+            raise
+        await show_error(traceback.format_exc())
+
+
 def main():
     argv = sys.argv
     if "--simulate" in argv:
@@ -10343,8 +10409,9 @@ def main():
     asyncio.run(main_async())
 
 
-async def main_async():
+async def _main_inner():
     global IMG
+    print("[BattleBees] inici")
     try:
         pygame.mixer.pre_init(SR, -16, 1, 512, allowedchanges=0)
     except TypeError:
@@ -10352,12 +10419,19 @@ async def main_async():
     pygame.init()
     init_display()
     make_fonts(False)
-    loading_screen(0.05, "Carregant...")
+    loading_screen(0.02, "Carregant...")
     await asyncio.sleep(0)
-    IMG = load_images(lambda fr: loading_screen(fr, "Generant sprites..."))
-    loading_screen(0.8, "Carregant so...")
+    IMG = {}
+    for frac in load_images_iter(lambda fr: loading_screen(fr, "Generant sprites..."), IMG):
+        loading_screen(frac * 0.85, "Carregant sprites... %d%%" % int(frac * 100))
+        await asyncio.sleep(0)
+    print("[BattleBees] sprites carregats")
+    loading_screen(0.9, "Carregant so...")
     await asyncio.sleep(0)
     audio_init(get_audio(lambda fr: loading_screen(fr, "Generant so i música...")))
+    print("[BattleBees] so carregat")
+    loading_screen(1.0, "Preparant el joc...")
+    await asyncio.sleep(0)
     g = Game()
     if g.sv["opts"]["bigfont"]:
         make_fonts(True)
