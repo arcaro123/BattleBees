@@ -35,13 +35,18 @@ import zlib
 import pygame
 import asyncio
 import traceback
-try:
-    from PIL import Image, ImageDraw  # pip install pillow (només cal per generar els sprites)
-    HAS_PIL = True
-except ImportError:                    # versió web (pygbag): els sprites arriben ja generats (assets/sprites.bin)
-    Image = ImageDraw = None
-    HAS_PIL = False
+import importlib
+
 WEB = sys.platform == "emscripten"
+Image = ImageDraw = None
+HAS_PIL = False
+if not WEB:                            # al navegador no es fa servir Pillow: els sprites arriben ja generats
+    try:                               # (importació dinàmica perquè pygbag no intenti baixar Pillow)
+        Image = importlib.import_module("PIL.Image")        # pip install pillow (per generar els sprites)
+        ImageDraw = importlib.import_module("PIL.ImageDraw")
+        HAS_PIL = True
+    except ImportError:
+        Image = ImageDraw = None
 
 
 
@@ -2973,7 +2978,7 @@ ENEMY_FUNCS["royal_spawn"] = royal_spawn
 
 def ghost_wasp(frame):
     """Vespa Espectral: la vespa, tenyida de lila i semitransparent."""
-    from PIL import ImageOps
+    ImageOps = importlib.import_module("PIL.ImageOps")
     base = ENEMY_FUNCS["wasp"](frame)
     gray = ImageOps.grayscale(base.convert("RGB"))
     col = ImageOps.colorize(gray, black=(24, 10, 52), white=(205, 165, 255)).convert("RGBA")
