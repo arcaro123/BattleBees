@@ -3,8 +3,10 @@
 Joc d'estratègia en temps real estil *Battle Cats*, fet amb **Pygame**, on defenses el teu rusc contra
 exèrcits d'insectes.
 
+> Joc original d'[arcaro123](https://github.com/arcaro123/BattleBees). Aquesta còpia en corregeix alguns errors (botiga, rescat, mutacions...).
+
 ## ▶ Juga-hi al navegador
-**https://arcaro123.github.io/BattleBees/**
+**https://abelber07.github.io/BattleBees/**
 
 (La primera càrrega pot trigar uns segons. La partida es desa al navegador.)
 
@@ -19,7 +21,7 @@ exèrcits d'insectes.
 Cal Python 3.10 o superior.
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt   # pygame-ce i Pillow
 python main.py
 ```
 

@@ -1,2 +1,2 @@
-pygame>=2.5
+pygame-ce>=2.5
 pillow>=10.0
